@@ -10,8 +10,16 @@ const nextConfig = {
         source: "/dashboard",
         destination: "/dashboard/default",
         permanent: false,
-      },
+      }
     ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api2/:path*',
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL}/:path*`,
+      },
+    ]
   },
 }
 
