@@ -1,4 +1,4 @@
-import { LayoutDashboard, Tag, Users, type LucideIcon } from "lucide-react";
+import { Building2, LayoutDashboard, Tag, Users, type LucideIcon } from "lucide-react";
 
 export interface NavSubItem {
   title: string;
@@ -126,6 +126,11 @@ export const sidebarItems: NavGroup[] = [
         title: "Venue Types",
         url: "/dashboard/venue-types",
         icon: Tag,
+      },
+      {
+        title: "Venues",
+        url: "/dashboard/venues",
+        icon: Building2,
       },
       // {
       //   title: "Authentication",
