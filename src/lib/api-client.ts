@@ -18,6 +18,9 @@ const apiClient = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   async (config) => {
+    // Add ngrok skip browser warning header
+    config.headers["ngrok-skip-browser-warning"] = "true";
+
     try {
       const session = await getSession();
       if (session?.accessToken) {
