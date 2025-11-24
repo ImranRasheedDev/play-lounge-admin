@@ -97,7 +97,7 @@ export interface VenueUpdateInput {
 
 // Get all venues
 export const getVenues = async (): Promise<Venue[]> => {
-  const response = await apiClient.get<VenueResponse>("/venues");
+  const response = await apiClient.get<VenueResponse>("/venues/all");
   return response.data.data;
 };
 

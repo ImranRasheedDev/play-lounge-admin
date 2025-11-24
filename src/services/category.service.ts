@@ -24,7 +24,7 @@ export interface CategoryUpdateInput {
 
 // Get all categories
 export const getCategories = async (): Promise<Category[]> => {
-  const response = await apiClient.get<CategoryResponse>("/categories");
+  const response = await apiClient.get<CategoryResponse>("/categories/all");
   return response.data.data;
 };
 
