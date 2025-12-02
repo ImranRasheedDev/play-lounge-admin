@@ -30,10 +30,14 @@ export function VenueTable() {
   const { data: venueTypes = [] } = useVenueTypes();
   const deleteMutation = useDeleteVenue();
 
-  const getCategoryName = React.useCallback(
-    (categoryId: string) => {
-      const category = categories.find((c) => c.id === categoryId);
-      return category?.title ?? "Unknown";
+  const getCategoryNames = React.useCallback(
+    (categoryId: string | string[] | unknown) => {
+      if (!categoryId) return [];
+      const ids = Array.isArray(categoryId) ? categoryId : [categoryId as string];
+      return ids.map((id) => {
+        const category = categories.find((c) => c.id === id);
+        return category?.title ?? "Unknown";
+      });
     },
     [categories],
   );
@@ -56,16 +60,16 @@ export function VenueTable() {
           setSelectedVenue(venue);
           setIsDeleteOpen(true);
         },
-        getCategoryName,
+        getCategoryNames,
         getVenueTypeName,
       }),
-    [getCategoryName, getVenueTypeName, router],
+    [getCategoryNames, getVenueTypeName, router],
   );
 
   const table = useDataTableInstance({
     data: venues,
     columns,
-    getRowId: (row) => row.id,
+    getRowId: (row) => String(row.id),
   });
 
   const handleCreate = () => {
@@ -74,7 +78,7 @@ export function VenueTable() {
 
   const handleDelete = () => {
     if (selectedVenue) {
-      deleteMutation.mutate(selectedVenue.id);
+      deleteMutation.mutate(String(selectedVenue.id));
     }
   };
 
@@ -94,7 +98,7 @@ export function VenueTable() {
         <CardAction>
           <div className="flex items-center gap-2">
             <DataTableViewOptions table={table} />
-            <Button variant="outline" size="sm" onClick={handleCreate}>
+            <Button variant="outline" size="sm" onClick={handleCreate} className="cursor-pointer">
               <Plus />
               <span className="hidden lg:inline">Add Venue</span>
             </Button>

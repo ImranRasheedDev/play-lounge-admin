@@ -5,19 +5,31 @@ import { toast } from "sonner";
 import {
   createCategory,
   deleteCategory,
-  getCategories,
+  getAllCategories,
+  getActiveCategories,
   updateCategory,
   type CategoryCreateInput,
   type CategoryUpdateInput,
 } from "@/services/category.service";
 
 const CATEGORIES_QUERY_KEY = ["categories"];
+const ACTIVE_CATEGORIES_QUERY_KEY = ["categories", "active"];
 
-// Hook to fetch all categories
+// Hook to fetch all categories (including inactive) - for categories page
 export const useCategories = () => {
   return useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
-    queryFn: getCategories,
+    queryFn: getAllCategories,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always consider data stale for immediate refetch
+  });
+};
+
+// Hook to fetch active categories only - for venue form
+export const useActiveCategories = () => {
+  return useQuery({
+    queryKey: ACTIVE_CATEGORIES_QUERY_KEY,
+    queryFn: getActiveCategories,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always consider data stale for immediate refetch
   });

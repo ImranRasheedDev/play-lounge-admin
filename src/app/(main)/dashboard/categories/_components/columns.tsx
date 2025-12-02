@@ -28,6 +28,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
         checked={table.getIsAllPageRowsSelected()}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        className="cursor-pointer"
       />
     ),
     cell: ({ row }) => (
@@ -35,6 +36,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        className="cursor-pointer"
       />
     ),
     enableSorting: false,
@@ -49,13 +51,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
 
       return (
         <div className="relative size-12 overflow-hidden rounded-md border">
-          <Image
-            src={process.env.NEXT_PUBLIC_API_URL + imageUrl}
-            alt={row.original.title}
-            fill
-            className="object-cover"
-            unoptimized
-          />
+          <Image src={imageUrl} alt={row.original.title} fill className="object-cover" unoptimized />
         </div>
       );
     },
@@ -80,13 +76,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
 
       return (
         <div className="relative size-12 overflow-hidden rounded-md border">
-          <Image
-            src={process.env.NEXT_PUBLIC_API_URL + imageUrl}
-            alt={row.original.title}
-            fill
-            className="object-cover"
-            unoptimized
-          />
+          <Image src={imageUrl} alt={row.original.title} fill className="object-cover" unoptimized />
         </div>
       );
     },
@@ -101,6 +91,15 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
     },
   },
   {
+    accessorKey: "isFeatured",
+    header: "Featured",
+    cell: ({ row }) => {
+      const isFeatured = row.original.isFeatured ?? false;
+      return <Badge variant={isFeatured ? "default" : "secondary"}>{isFeatured ? "Featured" : "Not Featured"}</Badge>;
+    },
+    enableSorting: false,
+  },
+  {
     id: "actions",
     cell: ({ row }) => {
       const category = row.original;
@@ -108,17 +107,20 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Cat
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-8 p-0">
+            <Button variant="ghost" className="size-8 cursor-pointer p-0">
               <MoreHorizontal className="size-4" />
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(category)}>
+            <DropdownMenuItem onClick={() => onEdit(category)} className="cursor-pointer">
               <Pencil className="mr-2 size-4" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(category)} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={() => onDelete(category)}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
               <Trash2 className="mr-2 size-4" />
               Delete
             </DropdownMenuItem>

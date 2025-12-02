@@ -7,6 +7,7 @@ export const categorySchema = z.object({
   image: z.string().optional(),
   icon: z.string().optional(),
   isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
 });
@@ -31,6 +32,7 @@ export const categoryFormSchema = z.object({
       message: "Icon is required",
     }),
   isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;

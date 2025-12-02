@@ -36,7 +36,12 @@ export const openHoursSchema = z.object({
 export const venueSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Venue name is required").max(200, "Name must be less than 200 characters"),
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.union([z.string().min(1), z.array(z.string()).min(1)]).refine((val) => {
+    if (Array.isArray(val)) {
+      return val.length > 0;
+    }
+    return typeof val === "string" && val.length > 0;
+  }, "At least one category is required"),
   venueTypeId: z.string().min(1, "Venue type is required"),
   address: z.string().min(1, "Address is required"),
   contactNumber: z.string().optional(),
@@ -47,7 +52,6 @@ export const venueSchema = z.object({
   googleReviewsLink: z.string().optional(),
   venueLink: z.string().optional(),
   thumbnail: z.string().optional(),
-  tags: z.array(z.string()).default([]),
   images: z.array(tagWithImagesSchema).default([]),
   experiences: z.array(experienceSchema).default([]),
   // Highlights
@@ -67,13 +71,21 @@ export const venueSchema = z.object({
 
 export const venueFormSchema = z.object({
   name: z.string().min(1, "Venue name is required").max(200, "Name must be less than 200 characters"),
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.array(z.string()).min(1, "At least one category is required"),
   venueTypeId: z.string().min(1, "Venue type is required"),
   address: z.string().min(1, "Address is required"),
   contactNumber: z.string().optional(),
   placeId: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  // Address components from Google Places
+  streetNumber: z.string().optional(),
+  route: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  postalCode: z.string().optional(),
+  countryCode: z.string().optional(),
   overview: z.string().min(1, "Overview is required"),
   googleReviewsLink: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
   venueLink: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
@@ -86,7 +98,6 @@ export const venueFormSchema = z.object({
     .refine((val) => val !== undefined && val !== null && val !== "", {
       message: "Thumbnail is required",
     }),
-  tags: z.array(z.string()).min(1, "At least one tag is required"),
   images: z
     .array(
       z.object({
@@ -96,7 +107,7 @@ export const venueFormSchema = z.object({
           .min(1, "At least one image is required for each tag"),
       }),
     )
-    .default([]),
+    .min(1, "At least one image tag is required"),
   experiences: z
     .array(
       z.object({

@@ -70,14 +70,16 @@ export function CategoryTable() {
   const handleSubmit = (categoryData: Category, iconFileParam?: File | null, imageFileParam?: File | null) => {
     if (selectedCategory) {
       // Update existing category
+      // If no new file provided, use existing URL from categoryData
       updateMutation.mutate({
         id: selectedCategory.id,
         data: {
           title: categoryData.title,
           slug: categoryData.slug,
           isActive: categoryData.isActive,
-          icon: iconFileParam ?? undefined,
-          image: imageFileParam ?? undefined,
+          isFeatured: categoryData.isFeatured,
+          icon: iconFileParam ?? categoryData.icon ?? undefined,
+          image: imageFileParam ?? categoryData.image ?? undefined,
         },
       });
     } else {
@@ -91,6 +93,7 @@ export function CategoryTable() {
         slug: categoryData.slug,
         icon: iconFileParam,
         image: imageFileParam,
+        isFeatured: categoryData.isFeatured,
       });
     }
   };
@@ -111,7 +114,7 @@ export function CategoryTable() {
         <CardAction>
           <div className="flex items-center gap-2">
             <DataTableViewOptions table={table} />
-            <Button variant="outline" size="sm" onClick={handleCreate}>
+            <Button variant="outline" size="sm" onClick={handleCreate} className="cursor-pointer">
               <Plus />
               <span className="hidden lg:inline">Add Category</span>
             </Button>

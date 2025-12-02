@@ -44,11 +44,13 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
       icon: undefined,
       image: undefined,
       isActive: true,
+      isFeatured: false,
     },
   });
 
   const watchedTitle = form.watch("title");
 
+  // eslint-disable-next-line complexity -- useEffect with category logic has necessary complexity
   React.useEffect(() => {
     if (category) {
       const iconValue = category.icon ?? "";
@@ -59,6 +61,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
         icon: iconValue,
         image: imageValue,
         isActive: category.isActive ?? true,
+        isFeatured: category.isFeatured ?? false,
       });
 
       // For existing categories, set preview from backend URL
@@ -80,6 +83,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
         icon: undefined,
         image: undefined,
         isActive: true,
+        isFeatured: false,
       });
       setImagePreview("");
       setIconPreview("");
@@ -119,7 +123,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
     }
   };
 
-  // eslint-disable-next-line complexity
+  // eslint-disable-next-line complexity -- Form submission logic is inherently complex
   const onFormSubmit = (data: CategoryFormValues) => {
     // Generate slug from title
     const slug = data.title.toLowerCase().replace(/\s+/g, "-");
@@ -139,6 +143,7 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
       image: imageUrl,
       icon: iconValue,
       isActive: data.isActive,
+      isFeatured: data.isFeatured,
       createdAt: category?.createdAt ?? new Date().toISOString(),
     };
 
@@ -244,6 +249,22 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="isFeatured"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Featured</FormLabel>
+                    <div className="text-muted-foreground text-sm">Mark this category as featured on home page</div>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <FormItem>
               <FormLabel>Slug (Auto-generated)</FormLabel>
               <Input
@@ -254,10 +275,12 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
             </FormItem>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">
                 Cancel
               </Button>
-              <Button type="submit">{category ? "Update Category" : "Create Category"}</Button>
+              <Button type="submit" className="cursor-pointer">
+                {category ? "Update Category" : "Create Category"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

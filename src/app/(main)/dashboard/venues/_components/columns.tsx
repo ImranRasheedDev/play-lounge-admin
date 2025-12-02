@@ -18,14 +18,14 @@ import { Venue } from "@/types/venue";
 interface ColumnsProps {
   onEdit: (venue: Venue) => void;
   onDelete: (venue: Venue) => void;
-  getCategoryName: (categoryId: string) => string;
+  getCategoryNames: (categoryId: string | string[]) => string[];
   getVenueTypeName: (venueTypeId: string) => string;
 }
 
 export const createColumns = ({
   onEdit,
   onDelete,
-  getCategoryName,
+  getCategoryNames,
   getVenueTypeName,
 }: ColumnsProps): ColumnDef<Venue>[] => [
   {
@@ -35,6 +35,7 @@ export const createColumns = ({
         checked={table.getIsAllPageRowsSelected()}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        className="cursor-pointer"
       />
     ),
     cell: ({ row }) => (
@@ -42,6 +43,7 @@ export const createColumns = ({
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        className="cursor-pointer"
       />
     ),
     enableSorting: false,
@@ -71,10 +73,31 @@ export const createColumns = ({
   },
   {
     accessorKey: "categoryId",
-    header: "Category",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">{getCategoryName(row.original.categoryId)}</span>
-    ),
+    header: "Categories",
+    cell: ({ row }) => {
+      const categoryIds = Array.isArray(row.original.categoryId) ? row.original.categoryId : [row.original.categoryId];
+      const categoryNames = getCategoryNames(row.original.categoryId);
+
+      if (categoryNames.length === 0) {
+        return <span className="text-muted-foreground text-sm">No categories</span>;
+      }
+
+      return (
+        <div className="flex flex-wrap gap-1">
+          {categoryNames.slice(0, 2).map((name, index) => (
+            <Badge key={categoryIds[index] || index} variant="secondary" className="text-xs">
+              {name}
+            </Badge>
+          ))}
+          {categoryNames.length > 2 && (
+            <Badge variant="outline" className="text-xs">
+              +{categoryNames.length - 2}
+            </Badge>
+          )}
+        </div>
+      );
+    },
+    enableSorting: false,
   },
   {
     accessorKey: "venueTypeId",
@@ -93,22 +116,38 @@ export const createColumns = ({
     ),
   },
   {
-    accessorKey: "tags",
-    header: "Tags",
+    accessorKey: "city",
+    header: "City",
     cell: ({ row }) => {
-      const tags = row.original.tags || [];
-      if (tags.length === 0) return <span className="text-muted-foreground text-sm">No tags</span>;
+      const city = (row.original as any).city;
+      return city ? (
+        <span className="text-muted-foreground text-sm">{city}</span>
+      ) : (
+        <span className="text-muted-foreground text-sm">—</span>
+      );
+    },
+  },
+  {
+    accessorKey: "badges",
+    header: "Flags",
+    cell: ({ row }) => {
+      const isSponsored = row.original.isSponsored;
+      const isTrending = row.original.isTrending;
+
+      if (!isSponsored && !isTrending) {
+        return <span className="text-muted-foreground text-sm">—</span>;
+      }
 
       return (
         <div className="flex flex-wrap gap-1">
-          {tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
+          {isSponsored && (
+            <Badge variant="default" className="text-xs">
+              Sponsored
             </Badge>
-          ))}
-          {tags.length > 2 && (
-            <Badge variant="outline" className="text-xs">
-              +{tags.length - 2}
+          )}
+          {isTrending && (
+            <Badge variant="secondary" className="text-xs">
+              Trending
             </Badge>
           )}
         </div>
@@ -132,17 +171,20 @@ export const createColumns = ({
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-8 p-0">
+            <Button variant="ghost" className="size-8 cursor-pointer p-0">
               <MoreHorizontal className="size-4" />
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(venue)}>
+            <DropdownMenuItem onClick={() => onEdit(venue)} className="cursor-pointer">
               <Pencil className="mr-2 size-4" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(venue)} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={() => onDelete(venue)}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
               <Trash2 className="mr-2 size-4" />
               Delete
             </DropdownMenuItem>

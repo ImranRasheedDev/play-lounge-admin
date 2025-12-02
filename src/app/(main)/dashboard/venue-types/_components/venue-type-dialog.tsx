@@ -104,10 +104,12 @@ export function VenueTypeDialog({ open, onOpenChange, venueType, onSubmit }: Ven
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="cursor-pointer">
                 Cancel
               </Button>
-              <Button type="submit">{venueType ? "Save changes" : "Create"}</Button>
+              <Button type="submit" className="cursor-pointer">
+                {venueType ? "Save changes" : "Create"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

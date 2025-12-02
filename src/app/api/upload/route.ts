@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { uploadFileToS3 } from "@/lib/s3-upload";
+
+// eslint-disable-next-line complexity -- Folder mapping requires multiple conditional checks
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+    let folder = formData.get("folder") as string;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (!folder) {
+      return NextResponse.json({ error: "No folder provided" }, { status: 400 });
+    }
+
+    // Map folder names to environment variables if they exist
+    if (folder === "categories/images" && process.env.AWS_S3_CATEGORIES_IMAGE_PATH) {
+      folder = process.env.AWS_S3_CATEGORIES_IMAGE_PATH;
+    } else if (folder === "categories/icons" && process.env.AWS_S3_CATEGORIES_ICON_PATH) {
+      folder = process.env.AWS_S3_CATEGORIES_ICON_PATH;
+    } else if (folder === "venues/thumbnails" && process.env.AWS_S3_VENUES_THUMBNAIL_PATH) {
+      folder = process.env.AWS_S3_VENUES_THUMBNAIL_PATH;
+    } else if (folder === "venues/images" && process.env.AWS_S3_VENUES_IMAGES_PATH) {
+      folder = process.env.AWS_S3_VENUES_IMAGES_PATH;
+    } else if (folder === "venues/experiences" && process.env.AWS_S3_VENUES_EXPERIENCES_PATH) {
+      folder = process.env.AWS_S3_VENUES_EXPERIENCES_PATH;
+    }
+
+    // Upload file to S3
+    const publicUrl = await uploadFileToS3(file, folder);
+
+    return NextResponse.json({
+      success: true,
+      url: publicUrl,
+    });
+  } catch (error) {
+    console.error("Error uploading file to S3:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to upload file" },
+      { status: 500 },
+    );
+  }
+}

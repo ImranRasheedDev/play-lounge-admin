@@ -1,4 +1,6 @@
+/* eslint-disable max-lines -- Venue service requires extensive API methods */
 import apiClient from "@/lib/api-client";
+import { uploadFile } from "@/lib/upload-utils";
 import { Venue } from "@/types/venue";
 
 export interface DayHours {
@@ -37,18 +39,25 @@ export interface VenueResponse {
 
 export interface VenueCreateInput {
   name: string;
-  categoryId: string;
+  categoryId: string | string[];
   venueTypeId: string;
   address: string;
   contactNumber?: string;
   placeId?: string;
   latitude?: number;
   longitude?: number;
+  // Address components
+  streetNumber?: string;
+  route?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  countryCode?: string;
   overview?: string;
   googleReviewsLink?: string;
   venueLink?: string;
   thumbnail: File;
-  tags: string[];
   images: TagWithImages[];
   experiences: Experience[];
   // Highlights
@@ -65,19 +74,26 @@ export interface VenueCreateInput {
 
 export interface VenueUpdateInput {
   name: string;
-  categoryId: string;
+  categoryId: string | string[];
   venueTypeId: string;
   address: string;
   contactNumber?: string;
   placeId?: string;
   latitude?: number;
   longitude?: number;
+  // Address components
+  streetNumber?: string;
+  route?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  countryCode?: string;
   overview?: string;
   googleReviewsLink?: string;
   venueLink?: string;
   thumbnail?: File;
   existingThumbnail?: string;
-  tags: string[];
   images: TagWithImages[];
   existingImages?: TagWithImages[];
   experiences: Experience[];
@@ -102,191 +118,228 @@ export const getVenues = async (): Promise<Venue[]> => {
 };
 
 // Create a new venue
-// eslint-disable-next-line complexity
+
 export const createVenue = async (data: VenueCreateInput): Promise<Venue> => {
-  const formData = new FormData();
-  formData.append("name", data.name);
-  formData.append("categoryId", data.categoryId);
-  formData.append("venueTypeId", data.venueTypeId);
-  formData.append("address", data.address);
+  // Upload thumbnail to S3
+  const thumbnailUrl = await uploadFile(data.thumbnail, "venues/thumbnails");
 
-  if (data.contactNumber) formData.append("contactNumber", data.contactNumber);
-  if (data.placeId) formData.append("placeId", data.placeId);
-  if (data.latitude) formData.append("latitude", data.latitude.toString());
-  if (data.longitude) formData.append("longitude", data.longitude.toString());
-  if (data.overview) formData.append("overview", data.overview);
-  if (data.googleReviewsLink) formData.append("googleReviewsLink", data.googleReviewsLink);
-  if (data.venueLink) formData.append("venueLink", data.venueLink);
+  // Upload tag images to S3
+  const uploadedImages = await Promise.all(
+    data.images.map(async (tagWithImages) => {
+      const uploadedTagImages = await Promise.all(
+        tagWithImages.images.map(async (img) => {
+          if (img instanceof File) {
+            return await uploadFile(img, "venues/images");
+          }
+          return img; // Already a URL string
+        }),
+      );
+      return {
+        name: tagWithImages.name,
+        images: uploadedTagImages,
+      };
+    }),
+  );
 
-  // Append thumbnail as a file
-  formData.append("thumbnail", data.thumbnail);
-
-  // Append venue tags as JSON string
-  formData.append("tags", JSON.stringify(data.tags));
-
-  // Append images (tag-wise)
-  if (data.images && data.images.length > 0) {
-    // Append images with Multer-friendly keys: imageTag_${tagIndex}_${fileIndex}
-    // Example: imageTag_0_0, imageTag_0_1, imageTag_1_0, etc.
-    data.images.forEach((tagWithImages, tagIndex) => {
-      tagWithImages.images.forEach((img, imageIndex) => {
-        if (img instanceof File) {
-          // Simple key pattern that Multer can easily extract
-          formData.append(`imageTag_${tagIndex}_${imageIndex}`, img);
-        }
-      });
-    });
-
-    // Append images data as JSON (with tag names, tag indices, and existing image URLs)
-    const imagesData = data.images.map((tagWithImages, tagIndex) => ({
-      tagIndex: tagIndex, // Add tagIndex for easy matching
-      name: tagWithImages.name,
-      images: tagWithImages.images.map((img) => (img instanceof File ? "" : img)),
-    }));
-    formData.append("images", JSON.stringify(imagesData));
-  }
-
-  // Append experiences
-  if (data.experiences && data.experiences.length > 0) {
-    data.experiences.forEach((exp) => {
+  // Upload experience images to S3
+  const uploadedExperiences = await Promise.all(
+    data.experiences.map(async (exp) => {
+      let imageUrl = exp.image;
       if (exp.image instanceof File) {
-        formData.append(`experienceImages`, exp.image);
+        imageUrl = await uploadFile(exp.image, "venues/experiences");
       }
-    });
+      return {
+        heading: exp.heading,
+        subHeading: exp.subHeading,
+        description: exp.description,
+        image: imageUrl,
+      };
+    }),
+  );
 
-    // Append experiences data as JSON
-    const experiencesData = data.experiences.map((exp) => ({
-      heading: exp.heading,
-      subHeading: exp.subHeading,
-      description: exp.description,
-      image: exp.image instanceof File ? "" : exp.image,
-    }));
-    formData.append("experiences", JSON.stringify(experiencesData));
-  }
+  // Send data as JSON to backend
+  const payload = {
+    name: data.name,
+    categoryId: data.categoryId,
+    venueTypeId: data.venueTypeId,
+    address: data.address,
+    contactNumber: data.contactNumber,
+    placeId: data.placeId,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    streetNumber: data.streetNumber,
+    route: data.route,
+    city: data.city,
+    state: data.state,
+    country: data.country,
+    postalCode: data.postalCode,
+    countryCode: data.countryCode,
+    overview: data.overview,
+    googleReviewsLink: data.googleReviewsLink,
+    venueLink: data.venueLink,
+    thumbnail: thumbnailUrl,
+    images: uploadedImages,
+    experiences: uploadedExperiences,
+    atmosphere: data.atmosphere,
+    foodOptions: data.foodOptions,
+    dressCode: data.dressCode,
+    accessibility: data.accessibility,
+    seated: data.seated,
+    standing: data.standing,
+    openHours: data.openHours,
+    isSponsored: data.isSponsored,
+    isTrending: data.isTrending,
+  };
 
-  // Append highlights
-  if (data.atmosphere) formData.append("atmosphere", data.atmosphere);
-  if (data.foodOptions) formData.append("foodOptions", data.foodOptions);
-  if (data.dressCode) formData.append("dressCode", data.dressCode);
-  if (data.accessibility) formData.append("accessibility", data.accessibility);
-  if (data.seated) formData.append("seated", data.seated);
-  if (data.standing) formData.append("standing", data.standing);
-
-  // Append open hours as JSON
-  if (data.openHours) formData.append("openHours", JSON.stringify(data.openHours));
-
-  // Append isSponsored and isTrending
-  if (data.isSponsored !== undefined) formData.append("isSponsored", data.isSponsored.toString());
-  if (data.isTrending !== undefined) formData.append("isTrending", data.isTrending.toString());
-
-  const response = await apiClient.post<{ data: Venue }>("/venues", formData, {
+  const response = await apiClient.post<{ data: Venue }>("/venues", payload, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": "application/json",
     },
   });
   return response.data.data;
 };
 
 // Update an existing venue
-// eslint-disable-next-line complexity
+
 export const updateVenue = async (id: string, data: VenueUpdateInput): Promise<Venue> => {
-  const formData = new FormData();
-  formData.append("name", data.name);
-  formData.append("categoryId", data.categoryId);
-  formData.append("venueTypeId", data.venueTypeId);
-  formData.append("address", data.address);
-  formData.append("isActive", data.isActive.toString());
-
-  if (data.contactNumber) formData.append("contactNumber", data.contactNumber);
-  if (data.placeId) formData.append("placeId", data.placeId);
-  if (data.latitude) formData.append("latitude", data.latitude.toString());
-  if (data.longitude) formData.append("longitude", data.longitude.toString());
-  if (data.overview) formData.append("overview", data.overview);
-  if (data.googleReviewsLink) formData.append("googleReviewsLink", data.googleReviewsLink);
-  if (data.venueLink) formData.append("venueLink", data.venueLink);
-
-  // Append thumbnail (new file or keep existing)
-  if (data.thumbnail) {
-    formData.append("thumbnail", data.thumbnail);
-  } else if (data.existingThumbnail) {
-    formData.append("existingThumbnail", data.existingThumbnail);
+  // Upload thumbnail to S3 if new file provided
+  let thumbnailUrl = data.existingThumbnail;
+  if (data.thumbnail instanceof File) {
+    thumbnailUrl = await uploadFile(data.thumbnail, "venues/thumbnails");
   }
 
-  // Append venue tags as JSON string
-  formData.append("tags", JSON.stringify(data.tags));
+  // Upload tag images to S3 (only new files)
+  const uploadedImages = data.images
+    ? await Promise.all(
+        data.images.map(async (tagWithImages) => {
+          const uploadedTagImages = await Promise.all(
+            tagWithImages.images.map(async (img) => {
+              if (img instanceof File) {
+                return await uploadFile(img, "venues/images");
+              }
+              return img; // Already a URL string
+            }),
+          );
+          return {
+            name: tagWithImages.name,
+            images: uploadedTagImages,
+          };
+        }),
+      )
+    : undefined;
 
-  // Append new images (tag-wise) if any
-  if (data.images && data.images.length > 0) {
-    // Append images with Multer-friendly keys: imageTag_${tagIndex}_${fileIndex}
-    // Example: imageTag_0_0, imageTag_0_1, imageTag_1_0, etc.
-    data.images.forEach((tagWithImages, tagIndex) => {
-      tagWithImages.images.forEach((img, imageIndex) => {
-        if (img instanceof File) {
-          // Simple key pattern that Multer can easily extract
-          formData.append(`imageTag_${tagIndex}_${imageIndex}`, img);
-        }
-      });
-    });
+  // Upload experience images to S3 (only new files)
+  const uploadedExperiences = data.experiences
+    ? await Promise.all(
+        data.experiences.map(async (exp) => {
+          let imageUrl: string;
+          if (exp.image instanceof File) {
+            imageUrl = await uploadFile(exp.image, "venues/experiences");
+          } else {
+            imageUrl = exp.image;
+          }
+          return {
+            heading: exp.heading,
+            subHeading: exp.subHeading,
+            description: exp.description,
+            image: imageUrl,
+          };
+        }),
+      )
+    : undefined;
 
-    // Append images data as JSON (with tag names, tag indices, and existing image URLs)
-    const imagesData = data.images.map((tagWithImages, tagIndex) => ({
-      tagIndex: tagIndex, // Add tagIndex for easy matching
-      name: tagWithImages.name,
-      images: tagWithImages.images.map((img) => (img instanceof File ? "" : img)),
-    }));
-    formData.append("images", JSON.stringify(imagesData));
+  // Prepare payload
+  const payload: {
+    name: string;
+    categoryId: string | string[];
+    venueTypeId: string;
+    address: string;
+    isActive: boolean;
+    contactNumber?: string;
+    placeId?: string;
+    latitude?: number;
+    longitude?: number;
+    overview?: string;
+    googleReviewsLink?: string;
+    venueLink?: string;
+    streetNumber?: string;
+    route?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    countryCode?: string;
+    thumbnail?: string;
+    images?: Array<{ name: string; images: string[] }>;
+    existingImages?: Array<{ name: string; images: string[] }>;
+    experiences?: Array<{ heading: string; subHeading: string; description: string; image: string }>;
+    existingExperiences?: string[];
+    atmosphere?: string;
+    foodOptions?: string;
+    dressCode?: string;
+    accessibility?: string;
+    seated?: string;
+    standing?: string;
+    openHours?: OpenHours;
+    isSponsored?: boolean;
+    isTrending?: boolean;
+  } = {
+    name: data.name,
+    categoryId: data.categoryId,
+    venueTypeId: data.venueTypeId,
+    address: data.address,
+    isActive: data.isActive,
+    contactNumber: data.contactNumber,
+    placeId: data.placeId,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    overview: data.overview,
+    googleReviewsLink: data.googleReviewsLink,
+    venueLink: data.venueLink,
+    streetNumber: data.streetNumber,
+    route: data.route,
+    city: data.city,
+    state: data.state,
+    country: data.country,
+    postalCode: data.postalCode,
+    countryCode: data.countryCode,
+    atmosphere: data.atmosphere,
+    foodOptions: data.foodOptions,
+    dressCode: data.dressCode,
+    accessibility: data.accessibility,
+    seated: data.seated,
+    standing: data.standing,
+    openHours: data.openHours,
+    isSponsored: data.isSponsored,
+    isTrending: data.isTrending,
+  };
+
+  if (thumbnailUrl) {
+    payload.thumbnail = thumbnailUrl;
   }
 
-  // Append existing images to preserve them
+  if (uploadedImages) {
+    payload.images = uploadedImages;
+  }
+
   if (data.existingImages) {
-    const existingImagesData = data.existingImages.map((tagWithImages) => ({
+    payload.existingImages = data.existingImages.map((tagWithImages) => ({
       name: tagWithImages.name,
-      images: tagWithImages.images.map((img) => (typeof img === "string" ? img : "")),
+      images: tagWithImages.images.filter((img): img is string => typeof img === "string"),
     }));
-    formData.append("existingImages", JSON.stringify(existingImagesData));
   }
 
-  // Append experiences
-  if (data.experiences && data.experiences.length > 0) {
-    data.experiences.forEach((exp) => {
-      if (exp.image instanceof File) {
-        formData.append(`experienceImages`, exp.image);
-      }
-    });
-
-    // Append experiences data as JSON
-    const experiencesData = data.experiences.map((exp) => ({
-      heading: exp.heading,
-      subHeading: exp.subHeading,
-      description: exp.description,
-      image: exp.image instanceof File ? "" : exp.image,
-    }));
-    formData.append("experiences", JSON.stringify(experiencesData));
+  if (uploadedExperiences) {
+    payload.experiences = uploadedExperiences;
   }
 
-  // Append existing experiences to preserve them
   if (data.existingExperiences) {
-    formData.append("existingExperiences", JSON.stringify(data.existingExperiences));
+    payload.existingExperiences = data.existingExperiences;
   }
 
-  // Append highlights
-  if (data.atmosphere) formData.append("atmosphere", data.atmosphere);
-  if (data.foodOptions) formData.append("foodOptions", data.foodOptions);
-  if (data.dressCode) formData.append("dressCode", data.dressCode);
-  if (data.accessibility) formData.append("accessibility", data.accessibility);
-  if (data.seated) formData.append("seated", data.seated);
-  if (data.standing) formData.append("standing", data.standing);
-
-  // Append open hours as JSON
-  if (data.openHours) formData.append("openHours", JSON.stringify(data.openHours));
-
-  // Append isSponsored and isTrending
-  if (data.isSponsored !== undefined) formData.append("isSponsored", data.isSponsored.toString());
-  if (data.isTrending !== undefined) formData.append("isTrending", data.isTrending.toString());
-
-  const response = await apiClient.patch<{ data: Venue }>(`/venues/${id}`, formData, {
+  const response = await apiClient.patch<{ data: Venue }>(`/venues/${id}`, payload, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": "application/json",
     },
   });
   return response.data.data;

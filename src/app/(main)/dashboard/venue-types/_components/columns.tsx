@@ -30,6 +30,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Ven
         checked={table.getIsAllPageRowsSelected()}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
+        className="cursor-pointer"
       />
     ),
     cell: ({ row }) => (
@@ -37,6 +38,7 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Ven
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
+        className="cursor-pointer"
       />
     ),
     enableSorting: false,
@@ -71,17 +73,20 @@ export const createColumns = ({ onEdit, onDelete }: ColumnsProps): ColumnDef<Ven
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-8 p-0">
+            <Button variant="ghost" className="size-8 cursor-pointer p-0">
               <MoreHorizontal className="size-4" />
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(venueType)}>
+            <DropdownMenuItem onClick={() => onEdit(venueType)} className="cursor-pointer">
               <Pencil className="mr-2 size-4" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDelete(venueType)} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={() => onDelete(venueType)}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
               <Trash2 className="mr-2 size-4" />
               Delete
             </DropdownMenuItem>

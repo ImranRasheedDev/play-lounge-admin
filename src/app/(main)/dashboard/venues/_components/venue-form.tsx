@@ -6,8 +6,26 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { X } from "lucide-react";
+import { Check, ChevronsUpDown, GripVertical, Plus, X } from "lucide-react";
 import Autocomplete from "react-google-autocomplete";
 import { useForm } from "react-hook-form";
 import PhoneInput from "react-phone-number-input";
@@ -18,14 +36,17 @@ import { GoogleMap } from "@/components/google-map";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useCategories } from "@/hooks/use-categories";
-import { useVenueTypes } from "@/hooks/use-venue-types";
+import { useActiveCategories } from "@/hooks/use-categories";
+import { useActiveVenueTypes } from "@/hooks/use-venue-types";
 import { useCreateVenue, useUpdateVenue } from "@/hooks/use-venues";
+import { cn } from "@/lib/utils";
 import { Venue } from "@/types/venue";
 
 import { venueFormSchema, type VenueFormValues } from "./schema";
@@ -33,6 +54,350 @@ import { venueFormSchema, type VenueFormValues } from "./schema";
 interface VenueFormProps {
   venue?: Venue | null;
   mode: "create" | "edit";
+}
+
+// Image Upload Box Component
+interface ImageUploadBoxProps {
+  accept?: string;
+  multiple?: boolean;
+  onChange: (files: File[]) => void;
+}
+
+function ImageUploadBox({ accept = "image/*", multiple = false, onChange }: ImageUploadBoxProps) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) {
+      onChange(files);
+      // Reset input so same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={handleClick}
+        className="hover:border-primary focus-visible:ring-ring group flex h-[180px] w-[275px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none dark:border-gray-700 dark:bg-gray-900"
+      >
+        <div className="text-muted-foreground group-hover:text-primary flex flex-col items-center gap-2 transition-colors">
+          <Plus className="h-8 w-8" />
+          <span className="text-sm font-medium">Click to upload</span>
+          <span className="text-xs">or drag and drop</span>
+        </div>
+      </button>
+    </>
+  );
+}
+
+// Sortable Tag Item Component
+interface SortableTagItemProps {
+  id: string;
+  tagIndex: number;
+  imageTag: {
+    name: string;
+    images: Array<File | string>;
+    imagePreviews: string[];
+  };
+  onRemove: (index: number) => void;
+  onUpdateName: (index: number, name: string) => void;
+  onAddImages: (index: number, files: File[]) => void;
+  onRemoveImage: (tagIndex: number, imageIndex: number) => void;
+  onImagesDragEnd: (event: DragEndEvent) => void;
+}
+
+function SortableTagItem({
+  id,
+  tagIndex,
+  imageTag,
+  onRemove,
+  onUpdateName,
+  onAddImages,
+  onRemoveImage,
+  onImagesDragEnd,
+}: SortableTagItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="text-muted-foreground cursor-grab touch-none active:cursor-grabbing"
+          >
+            <GripVertical className="h-5 w-5" />
+          </button>
+          <h4 className="text-sm font-semibold">Tag #{tagIndex + 1}</h4>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(tagIndex)} className="cursor-pointer">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Tag Name */}
+      <div className="space-y-2">
+        <FormLabel>
+          Tag Name <span className="text-destructive">*</span>
+        </FormLabel>
+        <Input
+          value={imageTag.name}
+          onChange={(e) => onUpdateName(tagIndex, e.target.value)}
+          placeholder="e.g., food, interior, exterior..."
+        />
+      </div>
+
+      {/* Images Upload */}
+      {imageTag.imagePreviews.length === 0 && (
+        <div className="space-y-2">
+          <FormLabel>
+            Images <span className="text-destructive">*</span>
+          </FormLabel>
+          <ImageUploadBox
+            accept="image/*"
+            multiple
+            onChange={(files) => {
+              if (files.length > 0) {
+                onAddImages(tagIndex, files);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* Image Previews with Drag and Drop */}
+      {imageTag.imagePreviews.length > 0 && (
+        <div className="space-y-2">
+          <FormLabel>
+            Images <span className="text-destructive">*</span>
+          </FormLabel>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onImagesDragEnd}>
+            <SortableContext
+              items={imageTag.imagePreviews.map((_, imageIndex) => `image-${tagIndex}-${imageIndex}`)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="flex flex-wrap gap-3">
+                {imageTag.imagePreviews.map((preview, imageIndex) => (
+                  <SortableImageItem
+                    key={imageIndex}
+                    id={`image-${tagIndex}-${imageIndex}`}
+                    preview={preview}
+                    alt={`${imageTag.name} - ${imageIndex + 1}`}
+                    onRemove={() => onRemoveImage(tagIndex, imageIndex)}
+                  />
+                ))}
+                <ImageUploadBox
+                  accept="image/*"
+                  multiple
+                  onChange={(files) => {
+                    if (files.length > 0) {
+                      onAddImages(tagIndex, files);
+                    }
+                  }}
+                />
+              </div>
+            </SortableContext>
+          </DndContext>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sortable Image Item Component
+interface SortableImageItemProps {
+  id: string;
+  preview: string;
+  alt: string;
+  onRemove: () => void;
+}
+
+// Sortable Experience Item Component
+interface SortableExperienceItemProps {
+  id: string;
+  exp: {
+    image: File | string;
+    imagePreview: string;
+    heading: string;
+    subHeading: string;
+    description: string;
+  };
+  index: number;
+  onRemove: (index: number) => void;
+  onImageChange: (index: number, file: File) => void;
+  onFieldChange: (index: number, field: "heading" | "subHeading" | "description", value: string) => void;
+  onClearImage: (index: number) => void;
+}
+
+function SortableExperienceItem({
+  id,
+  exp,
+  index,
+  onRemove,
+  onImageChange,
+  onFieldChange,
+  onClearImage,
+}: SortableExperienceItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="text-muted-foreground cursor-grab touch-none active:cursor-grabbing"
+          >
+            <GripVertical className="h-5 w-5" />
+          </button>
+          <h4 className="text-sm font-semibold">Experience #{index + 1}</h4>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={() => onRemove(index)} className="cursor-pointer">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Experience Image */}
+      <div className="space-y-2">
+        <FormLabel>
+          Image <span className="text-destructive">*</span>
+        </FormLabel>
+        {exp.imagePreview ? (
+          <div className="relative h-[180px] w-[275px] overflow-hidden rounded-md border">
+            <Image src={exp.imagePreview} alt={`Experience ${index + 1}`} fill className="object-cover" unoptimized />
+            <button
+              type="button"
+              onClick={() => onClearImage(index)}
+              className="bg-destructive text-destructive-foreground absolute top-2 right-2 cursor-pointer rounded-full p-1.5"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <ImageUploadBox
+            accept="image/*"
+            multiple={false}
+            onChange={(files) => {
+              if (files.length > 0 && files[0]) {
+                onImageChange(index, files[0]);
+              }
+            }}
+          />
+        )}
+      </div>
+
+      {/* Heading */}
+      <div className="space-y-2">
+        <FormLabel>
+          Heading <span className="text-destructive">*</span>
+        </FormLabel>
+        <Input
+          value={exp.heading}
+          onChange={(e) => onFieldChange(index, "heading", e.target.value)}
+          placeholder="Experience heading..."
+        />
+      </div>
+
+      {/* Sub Heading */}
+      <div className="space-y-2">
+        <FormLabel>
+          Sub Heading <span className="text-destructive">*</span>
+        </FormLabel>
+        <Input
+          value={exp.subHeading}
+          onChange={(e) => onFieldChange(index, "subHeading", e.target.value)}
+          placeholder="Experience sub heading..."
+        />
+      </div>
+
+      {/* Description */}
+      <div className="space-y-2">
+        <FormLabel>
+          Description <span className="text-destructive">*</span>
+        </FormLabel>
+        <Textarea
+          value={exp.description}
+          onChange={(e) => onFieldChange(index, "description", e.target.value)}
+          placeholder="Describe the experience..."
+          rows={3}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SortableImageItem({ id, preview, alt, onRemove }: SortableImageItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group relative h-[180px] w-[275px]">
+      <div
+        className="relative h-full w-full cursor-grab overflow-hidden rounded-md border-2 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <Image src={preview} alt={alt} fill className="pointer-events-none object-cover" unoptimized />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          onPointerDown={(e) => {
+            // Prevent drag when clicking on cross button
+            e.stopPropagation();
+          }}
+          className="bg-destructive text-destructive-foreground absolute top-2 right-2 z-10 cursor-pointer rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function VenueForm({ venue, mode }: VenueFormProps) {
@@ -56,11 +421,25 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
       description: string;
     }>
   >([]);
-  const [tagInput, setTagInput] = React.useState("");
   const autocompleteRef = React.useRef<HTMLInputElement>(null);
 
-  const { data: categories } = useCategories();
-  const { data: venueTypes } = useVenueTypes();
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const { data: categories = [] } = useActiveCategories();
+  const { data: venueTypes } = useActiveVenueTypes();
+
+  // Filter out "All" category
+  const filteredCategories = React.useMemo(() => {
+    return categories.filter((cat) => cat.title.toLowerCase() !== "all" && cat.slug?.toLowerCase() !== "all");
+  }, [categories]);
+
+  const [categoryOpen, setCategoryOpen] = React.useState(false);
   const createMutation = useCreateVenue();
   const updateMutation = useUpdateVenue();
 
@@ -70,26 +449,32 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
     resolver: zodResolver(venueFormSchema),
     defaultValues: {
       name: venue?.name ?? "",
-      categoryId: venue?.categoryId ?? "",
+      categoryId: Array.isArray(venue?.categoryId) ? venue.categoryId : venue?.categoryId ? [venue.categoryId] : [],
       venueTypeId: venue?.venueTypeId ?? "",
       address: venue?.address ?? "",
       contactNumber: venue?.contactNumber ?? "",
       placeId: venue?.placeId ?? "",
       latitude: venue?.latitude,
       longitude: venue?.longitude,
+      streetNumber: (venue as any)?.streetNumber ?? "",
+      route: (venue as any)?.route ?? "",
+      city: (venue as any)?.city ?? "",
+      state: (venue as any)?.state ?? "",
+      country: (venue as any)?.country ?? "",
+      postalCode: (venue as any)?.postalCode ?? "",
+      countryCode: (venue as any)?.countryCode ?? "",
       overview: venue?.overview ?? "",
       googleReviewsLink: venue?.googleReviewsLink ?? "",
       venueLink: venue?.venueLink ?? "",
       thumbnail: venue?.thumbnail ?? "",
-      tags: venue?.tags ?? [],
       images: venue?.images ?? [],
       experiences: venue?.experiences ?? [],
       atmosphere: venue?.atmosphere ?? "",
       foodOptions: venue?.foodOptions ?? "",
       dressCode: venue?.dressCode ?? "",
       accessibility: venue?.accessibility ?? "",
-      seated: venue?.seated ?? "",
-      standing: venue?.standing ?? "",
+      seated: venue?.seated ? String(venue.seated) : "",
+      standing: venue?.standing ? String(venue.standing) : "",
       openHours: venue?.openHours ?? {
         monday: { isOpen: false, openTime: "", closeTime: "" },
         tuesday: { isOpen: false, openTime: "", closeTime: "" },
@@ -105,10 +490,14 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
     },
   });
 
-  const tags = form.watch("tags");
-
   React.useEffect(() => {
     if (venue && mode === "edit") {
+      // Set existing categoryId (convert string to array if needed)
+      if (venue.categoryId) {
+        const categoryIds = Array.isArray(venue.categoryId) ? venue.categoryId : [venue.categoryId];
+        form.setValue("categoryId", categoryIds);
+      }
+
       // Set existing thumbnail
       if (venue.thumbnail) {
         const thumbnailUrl = venue.thumbnail.startsWith("http")
@@ -242,6 +631,47 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
     );
   };
 
+  // Handle tag reordering
+  const handleTagsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = images.findIndex((_, index) => `tag-${index}` === active.id);
+      const newIndex = images.findIndex((_, index) => `tag-${index}` === over.id);
+      const newImages = arrayMove(images, oldIndex, newIndex);
+      setImages(newImages);
+      // Sync with form
+      form.setValue(
+        "images",
+        newImages.map((tag) => ({
+          name: tag.name,
+          images: tag.images,
+        })),
+      );
+    }
+  };
+
+  // Handle image reordering within a tag
+  const handleTagImagesDragEnd = (tagIndex: number) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const newImages = [...images];
+      const tag = newImages[tagIndex];
+      const oldIndex = tag.images.findIndex((_, index) => `image-${tagIndex}-${index}` === active.id);
+      const newIndex = tag.images.findIndex((_, index) => `image-${tagIndex}-${index}` === over.id);
+      tag.images = arrayMove(tag.images, oldIndex, newIndex);
+      tag.imagePreviews = arrayMove(tag.imagePreviews, oldIndex, newIndex);
+      setImages([...newImages]);
+      // Sync with form
+      form.setValue(
+        "images",
+        newImages.map((tag) => ({
+          name: tag.name,
+          images: tag.images,
+        })),
+      );
+    }
+  };
+
   const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -272,35 +702,46 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
         form.setValue("longitude", place.geometry.location.lng());
       }
 
+      // Extract address components
+      if (place.address_components) {
+        const addressComponents = place.address_components;
+
+        console.log("addressComponents", addressComponents);
+
+        // Helper function to get component value by type
+        const getComponentValue = (types: string[], targetType: string): string => {
+          const component = addressComponents.find((comp) => comp.types.includes(targetType));
+          return component?.long_name ?? "";
+        };
+
+        // Extract address parts
+        const streetNumber = getComponentValue(["street_number"], "street_number");
+        const route = getComponentValue(["route"], "route");
+        const city =
+          getComponentValue(["locality"], "locality") ||
+          getComponentValue(["administrative_area_level_2"], "administrative_area_level_2");
+        const state = getComponentValue(["administrative_area_level_1"], "administrative_area_level_1");
+        const country = getComponentValue(["country"], "country");
+        const postalCode = getComponentValue(["postal_code"], "postal_code");
+        const countryCode = (() => {
+          const component = addressComponents.find((comp) => comp.types.includes("country"));
+          return component?.short_name ?? "";
+        })();
+
+        // Set address component values
+        form.setValue("streetNumber", streetNumber);
+        form.setValue("route", route);
+        form.setValue("city", city);
+        form.setValue("state", state);
+        form.setValue("country", country);
+        form.setValue("postalCode", postalCode);
+        form.setValue("countryCode", countryCode);
+      }
+
       // Update the input field to show only the name
       if (autocompleteRef.current) {
         autocompleteRef.current.value = venueName;
       }
-    }
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim()) {
-      const currentTags = form.getValues("tags") || [];
-      if (!currentTags.includes(tagInput.trim())) {
-        form.setValue("tags", [...currentTags, tagInput.trim()]);
-      }
-      setTagInput("");
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    const currentTags = form.getValues("tags") ?? [];
-    form.setValue(
-      "tags",
-      currentTags.filter((tag) => tag !== tagToRemove),
-    );
-  };
-
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddTag();
     }
   };
 
@@ -319,6 +760,24 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
 
   const handleRemoveExperience = (index: number) => {
     const newExperiences = experiences.filter((_, i) => i !== index);
+    setExperiences(newExperiences);
+  };
+
+  // Handle experiences reordering
+  const handleExperiencesDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = experiences.findIndex((_, index) => `experience-${index}` === active.id);
+      const newIndex = experiences.findIndex((_, index) => `experience-${index}` === over.id);
+      const newExperiences = arrayMove(experiences, oldIndex, newIndex);
+      setExperiences(newExperiences);
+    }
+  };
+
+  const handleClearExperienceImage = (index: number) => {
+    const newExperiences = [...experiences];
+    newExperiences[index].image = "";
+    newExperiences[index].imagePreview = "";
     setExperiences(newExperiences);
   };
 
@@ -345,32 +804,6 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
   const onFormSubmit = (data: VenueFormValues) => {
     console.log("Form submit triggered", { data, images, thumbnailFile, existingThumbnail });
 
-    if (images.length === 0) {
-      console.error("Validation error: No image tags");
-      toast.error("Please add at least one image tag");
-      return;
-    }
-
-    // Validate that each tag has at least one image
-    for (const imageTag of images) {
-      if (!imageTag.name.trim()) {
-        console.error("Validation error: Empty tag name", imageTag);
-        toast.error("Please enter a tag name for all image tags");
-        return;
-      }
-      if (imageTag.images.length === 0) {
-        console.error("Validation error: No images in tag", imageTag);
-        toast.error(`Please add at least one image for tag "${imageTag.name ?? "untagged"}"`);
-        return;
-      }
-    }
-
-    if (!thumbnailFile && !existingThumbnail) {
-      console.error("Validation error: No thumbnail");
-      toast.error("Please add a thumbnail image");
-      return;
-    }
-
     if (mode === "edit" && venue) {
       const existingImagesData = images
         .filter((tag) => tag.images.every((img) => typeof img === "string"))
@@ -391,12 +824,18 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
             placeId: data.placeId,
             latitude: data.latitude,
             longitude: data.longitude,
+            streetNumber: data.streetNumber,
+            route: data.route,
+            city: data.city,
+            state: data.state,
+            country: data.country,
+            postalCode: data.postalCode,
+            countryCode: data.countryCode,
             overview: data.overview,
             googleReviewsLink: data.googleReviewsLink,
             venueLink: data.venueLink,
             thumbnail: thumbnailFile ?? undefined,
             existingThumbnail: existingThumbnail ?? undefined,
-            tags: data.tags,
             images: images.map((tag) => ({
               name: tag.name,
               images: tag.images,
@@ -450,11 +889,17 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
         placeId: data.placeId,
         latitude: data.latitude,
         longitude: data.longitude,
+        streetNumber: data.streetNumber,
+        route: data.route,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        postalCode: data.postalCode,
+        countryCode: data.countryCode,
         overview: data.overview,
         googleReviewsLink: data.googleReviewsLink,
         venueLink: data.venueLink,
         thumbnail: thumbnailFile,
-        tags: data.tags,
         images: images.map((tag) => ({
           name: tag.name,
           images: tag.images,
@@ -528,7 +973,7 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                           onPlaceSelected={handlePlaceSelect}
                           options={{
                             types: ["establishment"],
-                            fields: ["name", "formatted_address", "geometry", "place_id"],
+                            fields: ["name", "formatted_address", "geometry", "place_id", "address_components"],
                           }}
                           placeholder="Search for a venue..."
                           value={field.value}
@@ -541,63 +986,6 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                     </FormItem>
                   )}
                 />
-
-                {/* Category and Venue Type */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="categoryId"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel>
-                          Category <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories?.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="venueTypeId"
-                    render={({ field }) => (
-                      <FormItem className="w-full">
-                        <FormLabel>
-                          Venue Type <span className="text-destructive">*</span>
-                        </FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a venue type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {venueTypes?.map((venueType) => (
-                              <SelectItem key={venueType.id} value={venueType.id}>
-                                {venueType.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
                 {/* Address */}
                 <FormField
@@ -708,75 +1096,39 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                 <CardDescription>Upload images organized by tags (e.g., food, interior, exterior)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {images.map((imageTag, tagIndex) => (
-                  <div key={tagIndex} className="space-y-4 rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">Tag #{tagIndex + 1}</h4>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveImageTag(tagIndex)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Tag Name */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Tag Name <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Input
-                        value={imageTag.name}
-                        onChange={(e) => handleUpdateImageTagName(tagIndex, e.target.value)}
-                        placeholder="e.g., food, interior, exterior..."
-                      />
-                    </div>
-
-                    {/* Images Upload */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Images <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files ?? []);
-                          if (files.length > 0) {
-                            handleAddImagesToTag(tagIndex, files);
-                          }
-                        }}
-                        className="cursor-pointer"
-                      />
-                    </div>
-
-                    {/* Image Previews */}
-                    {imageTag.imagePreviews.length > 0 && (
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        {imageTag.imagePreviews.map((preview, imageIndex) => (
-                          <div key={imageIndex} className="group relative">
-                            <div className="relative h-40 overflow-hidden rounded-md border-2">
-                              <Image
-                                src={preview}
-                                alt={`${imageTag.name} - ${imageIndex + 1}`}
-                                fill
-                                className="object-cover"
-                                unoptimized
+                <FormField
+                  control={form.control}
+                  name="images"
+                  render={() => (
+                    <FormItem>
+                      <FormControl>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTagsDragEnd}>
+                          <SortableContext
+                            items={images.map((_, index) => `tag-${index}`)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            {images.map((imageTag, tagIndex) => (
+                              <SortableTagItem
+                                key={tagIndex}
+                                id={`tag-${tagIndex}`}
+                                tagIndex={tagIndex}
+                                imageTag={imageTag}
+                                onRemove={handleRemoveImageTag}
+                                onUpdateName={handleUpdateImageTagName}
+                                onAddImages={handleAddImagesToTag}
+                                onRemoveImage={handleRemoveImageFromTag}
+                                onImagesDragEnd={handleTagImagesDragEnd(tagIndex)}
                               />
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveImageFromTag(tagIndex, imageIndex)}
-                                className="bg-destructive text-destructive-foreground absolute top-2 right-2 rounded-full p-1.5 opacity-0 transition-opacity group-hover:opacity-100"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                            ))}
+                          </SortableContext>
+                        </DndContext>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <Button type="button" variant="outline" onClick={handleAddImageTag} className="w-full">
+                <Button type="button" variant="outline" onClick={handleAddImageTag} className="w-full cursor-pointer">
                   Add Image Tag
                 </Button>
               </CardContent>
@@ -800,25 +1152,50 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                         Upload Thumbnail <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleThumbnailChange}
-                          className="cursor-pointer"
-                        />
+                        {thumbnailPreview ? (
+                          <div className="relative h-[180px] w-[275px] overflow-hidden rounded-md border-2">
+                            <Image
+                              src={thumbnailPreview}
+                              alt="Thumbnail preview"
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setThumbnailPreview("");
+                                setThumbnailFile(null);
+                                setExistingThumbnail("");
+                                form.setValue("thumbnail", "");
+                              }}
+                              className="bg-destructive text-destructive-foreground absolute top-2 right-2 cursor-pointer rounded-full p-1.5"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <ImageUploadBox
+                            accept="image/*"
+                            onChange={(files) => {
+                              if (files.length > 0) {
+                                const file = files[0];
+                                setThumbnailFile(file);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setThumbnailPreview(reader.result as string);
+                                  form.setValue("thumbnail", file);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {thumbnailPreview && (
-                  <div className="flex justify-center">
-                    <div className="border-primary relative h-48 w-full max-w-sm overflow-hidden rounded-md border-2">
-                      <Image src={thumbnailPreview} alt="Thumbnail preview" fill className="object-cover" unoptimized />
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -829,82 +1206,27 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                 <CardDescription>Add multiple experiences with images and details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {experiences.map((exp, index) => (
-                  <div key={index} className="space-y-4 rounded-lg border p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">Experience #{index + 1}</h4>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveExperience(index)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Experience Image */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Image <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleExperienceImageChange(index, file);
-                        }}
-                        className="cursor-pointer"
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleExperiencesDragEnd}>
+                  <SortableContext
+                    items={experiences.map((_, index) => `experience-${index}`)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {experiences.map((exp, index) => (
+                      <SortableExperienceItem
+                        key={index}
+                        id={`experience-${index}`}
+                        exp={exp}
+                        index={index}
+                        onRemove={handleRemoveExperience}
+                        onImageChange={handleExperienceImageChange}
+                        onFieldChange={handleExperienceFieldChange}
+                        onClearImage={handleClearExperienceImage}
                       />
-                      {exp.imagePreview && (
-                        <div className="relative h-32 w-full overflow-hidden rounded-md border">
-                          <Image
-                            src={exp.imagePreview}
-                            alt={`Experience ${index + 1}`}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      )}
-                    </div>
+                    ))}
+                  </SortableContext>
+                </DndContext>
 
-                    {/* Heading */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Heading <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Input
-                        value={exp.heading}
-                        onChange={(e) => handleExperienceFieldChange(index, "heading", e.target.value)}
-                        placeholder="Experience heading..."
-                      />
-                    </div>
-
-                    {/* Sub Heading */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Sub Heading <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Input
-                        value={exp.subHeading}
-                        onChange={(e) => handleExperienceFieldChange(index, "subHeading", e.target.value)}
-                        placeholder="Experience sub heading..."
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <FormLabel>
-                        Description <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <Textarea
-                        value={exp.description}
-                        onChange={(e) => handleExperienceFieldChange(index, "description", e.target.value)}
-                        placeholder="Describe the experience..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                ))}
-
-                <Button type="button" variant="outline" onClick={handleAddExperience} className="w-full">
+                <Button type="button" variant="outline" onClick={handleAddExperience} className="w-full cursor-pointer">
                   Add Experience
                 </Button>
               </CardContent>
@@ -913,57 +1235,120 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
 
           {/* Right Column - Additional Info */}
           <div className="space-y-6">
+            {/* Category and Venue Type */}
             <Card>
               <CardHeader>
-                <CardTitle>
-                  Tags <span className="text-destructive">*</span>
-                </CardTitle>
-                <CardDescription>Add at least one tag to categorize the venue</CardDescription>
+                <CardTitle>Category & Venue Type</CardTitle>
+                <CardDescription>Select the category and type for this venue</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="tags"
-                  render={() => (
+                  name="categoryId"
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Add Tags <span className="text-destructive">*</span>
+                        Categories <span className="text-destructive">*</span>
                       </FormLabel>
-                      <FormControl>
-                        <div className="space-y-3">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Type a tag..."
-                              value={tagInput}
-                              onChange={(e) => setTagInput(e.target.value)}
-                              onKeyDown={handleTagInputKeyDown}
-                            />
-                            <Button type="button" variant="secondary" onClick={handleAddTag}>
-                              Add
+                      <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
+                            >
+                              {field.value && field.value.length > 0
+                                ? `${field.value.length} categor${field.value.length === 1 ? "y" : "ies"} selected`
+                                : "Select categories..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
-                          </div>
-                          {tags && tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {tags.map((tag) => (
-                                <Badge key={tag} variant="secondary" className="gap-1 pr-1 pl-2">
-                                  {tag}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleRemoveTag(tag);
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search categories..." />
+                            <CommandList>
+                              <CommandEmpty>No category found.</CommandEmpty>
+                              <CommandGroup>
+                                {filteredCategories.map((category) => (
+                                  <CommandItem
+                                    key={category.id}
+                                    value={category.title}
+                                    onSelect={() => {
+                                      const currentValues = field.value || [];
+                                      const isSelected = currentValues.includes(category.id);
+                                      const newValues = isSelected
+                                        ? currentValues.filter((id) => id !== category.id)
+                                        : [...currentValues, category.id];
+                                      field.onChange(newValues);
                                     }}
-                                    className="hover:bg-accent ml-1 rounded-sm"
+                                    className="cursor-pointer"
                                   >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value?.includes(category.id) ? "opacity-100" : "opacity-0",
+                                      )}
+                                    />
+                                    {category.title}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {field.value && field.value.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {field.value.map((categoryId) => {
+                            const category = filteredCategories.find((cat) => cat.id === categoryId);
+                            if (!category) return null;
+                            return (
+                              <Badge key={categoryId} variant="secondary" className="gap-1 pr-1 pl-2">
+                                {category.title}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newValues = field.value?.filter((id) => id !== categoryId) || [];
+                                    field.onChange(newValues);
+                                  }}
+                                  className="hover:bg-accent ml-1 cursor-pointer rounded-sm"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            );
+                          })}
                         </div>
-                      </FormControl>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="venueTypeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Venue Type <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a venue type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {venueTypes?.map((venueType) => (
+                            <SelectItem key={venueType.id} value={venueType.id}>
+                              {venueType.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1204,10 +1589,19 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
 
         {/* Bottom Action Buttons */}
         <div className="bg-card flex items-center justify-end gap-3 rounded-lg border p-4">
-          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/venues")}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/dashboard/venues")}
+            className="cursor-pointer"
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+          <Button
+            type="submit"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            className="cursor-pointer"
+          >
             {createMutation.isPending || updateMutation.isPending
               ? "Saving..."
               : mode === "edit"

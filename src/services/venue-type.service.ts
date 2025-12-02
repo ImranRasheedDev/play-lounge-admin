@@ -16,9 +16,15 @@ export interface VenueTypeUpdateInput {
   isActive: boolean;
 }
 
-// Get all venue types
-export const getVenueTypes = async (): Promise<VenueType[]> => {
+// Get all venue types (including inactive)
+export const getAllVenueTypes = async (): Promise<VenueType[]> => {
   const response = await apiClient.get<VenueTypeResponse>("/venue-types/all");
+  return response.data.data;
+};
+
+// Get active venue types only
+export const getActiveVenueTypes = async (): Promise<VenueType[]> => {
+  const response = await apiClient.get<VenueTypeResponse>("/venue-types");
   return response.data.data;
 };
 

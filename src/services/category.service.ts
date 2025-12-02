@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import { uploadFile } from "@/lib/upload-utils";
 import { Category } from "@/types/category";
 
 export interface CategoryResponse {
@@ -12,55 +13,105 @@ export interface CategoryCreateInput {
   slug: string;
   image: File;
   icon: File;
+  isFeatured: boolean;
 }
 
 export interface CategoryUpdateInput {
   title: string;
   slug: string;
-  image?: File;
-  icon?: File;
+  image?: File | string; // Can be File (new) or string (existing URL)
+  icon?: File | string; // Can be File (new) or string (existing URL)
   isActive: boolean;
+  isFeatured: boolean;
 }
 
-// Get all categories
-export const getCategories = async (): Promise<Category[]> => {
+// Get all categories (including inactive)
+export const getAllCategories = async (): Promise<Category[]> => {
   const response = await apiClient.get<CategoryResponse>("/categories/all");
+  return response.data.data;
+};
+
+// Get active categories only
+export const getActiveCategories = async (): Promise<Category[]> => {
+  const response = await apiClient.get<CategoryResponse>("/categories");
   return response.data.data;
 };
 
 // Create a new category
 export const createCategory = async (data: CategoryCreateInput): Promise<Category> => {
-  const formData = new FormData();
-  formData.append("title", data.title);
-  formData.append("slug", data.slug);
-  formData.append("image", data.image);
-  formData.append("icon", data.icon);
+  // Upload files to S3 first
+  // API route will map these to env variables if configured
+  const [imageUrl, iconUrl] = await Promise.all([
+    uploadFile(data.image, "categories/images"),
+    uploadFile(data.icon, "categories/icons"),
+  ]);
 
-  const response = await apiClient.post<{ data: Category }>("/categories", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
+  // Send URLs to backend as JSON
+  const response = await apiClient.post<{ data: Category }>(
+    "/categories",
+    {
+      title: data.title,
+      slug: data.slug,
+      image: imageUrl,
+      icon: iconUrl,
+      isFeatured: data.isFeatured,
     },
-  });
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
   return response.data.data;
 };
 
 // Update an existing category
 export const updateCategory = async (id: string, data: CategoryUpdateInput): Promise<Category> => {
-  const formData = new FormData();
-  formData.append("title", data.title);
-  formData.append("slug", data.slug);
-  formData.append("isActive", data.isActive.toString());
+  // Upload new files to S3 if they are File objects
+  // API route will map these to env variables if configured
+  const uploadPromises: Promise<string | undefined>[] = [];
 
-  if (data.image) {
-    formData.append("image", data.image);
-  }
-  if (data.icon) {
-    formData.append("icon", data.icon);
+  if (data.image instanceof File) {
+    uploadPromises.push(uploadFile(data.image, "categories/images"));
+  } else {
+    uploadPromises.push(Promise.resolve(data.image));
   }
 
-  const response = await apiClient.patch<{ data: Category }>(`/categories/${id}`, formData, {
+  if (data.icon instanceof File) {
+    uploadPromises.push(uploadFile(data.icon, "categories/icons"));
+  } else {
+    uploadPromises.push(Promise.resolve(data.icon));
+  }
+
+  const [imageUrl, iconUrl] = await Promise.all(uploadPromises);
+
+  // Prepare update payload
+  const payload: {
+    title: string;
+    slug: string;
+    isActive: boolean;
+    isFeatured: boolean;
+    image?: string;
+    icon?: string;
+  } = {
+    title: data.title,
+    slug: data.slug,
+    isActive: data.isActive,
+    isFeatured: data.isFeatured,
+  };
+
+  // Only include image/icon if they were provided
+  if (imageUrl) {
+    payload.image = imageUrl;
+  }
+  if (iconUrl) {
+    payload.icon = iconUrl;
+  }
+
+  // Send URLs to backend as JSON
+  const response = await apiClient.patch<{ data: Category }>(`/categories/${id}`, payload, {
     headers: {
-      "Content-Type": "multipart/form-data",
+      "Content-Type": "application/json",
     },
   });
   return response.data.data;

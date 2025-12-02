@@ -101,7 +101,7 @@ export function VenueTypeTable() {
         <CardAction>
           <div className="flex items-center gap-2">
             <DataTableViewOptions table={table} />
-            <Button variant="outline" size="sm" onClick={handleCreate}>
+            <Button variant="outline" size="sm" onClick={handleCreate} className="cursor-pointer">
               <Plus />
               <span className="hidden lg:inline">Add Venue Type</span>
             </Button>

@@ -5,19 +5,31 @@ import { toast } from "sonner";
 import {
   createVenueType,
   deleteVenueType,
-  getVenueTypes,
+  getAllVenueTypes,
+  getActiveVenueTypes,
   updateVenueType,
   type VenueTypeCreateInput,
   type VenueTypeUpdateInput,
 } from "@/services/venue-type.service";
 
 const VENUE_TYPES_QUERY_KEY = ["venue-types"];
+const ACTIVE_VENUE_TYPES_QUERY_KEY = ["venue-types", "active"];
 
-// Hook to fetch all venue types
+// Hook to fetch all venue types (including inactive) - for venue types page
 export const useVenueTypes = () => {
   return useQuery({
     queryKey: VENUE_TYPES_QUERY_KEY,
-    queryFn: getVenueTypes,
+    queryFn: getAllVenueTypes,
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always consider data stale for immediate refetch
+  });
+};
+
+// Hook to fetch active venue types only - for venue form
+export const useActiveVenueTypes = () => {
+  return useQuery({
+    queryKey: ACTIVE_VENUE_TYPES_QUERY_KEY,
+    queryFn: getActiveVenueTypes,
     refetchOnWindowFocus: false,
     staleTime: 0, // Always consider data stale for immediate refetch
   });
