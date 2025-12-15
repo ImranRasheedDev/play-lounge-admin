@@ -672,20 +672,6 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
     }
   };
 
-  const handleThumbnailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setThumbnailFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailPreview(reader.result as string);
-        // Update form value
-        form.setValue("thumbnail", file);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handlePlaceSelect = (place: google.maps.places.PlaceResult) => {
     if (place) {
       // Set only venue name (not full address) in the name field

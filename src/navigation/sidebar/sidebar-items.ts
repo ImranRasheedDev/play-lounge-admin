@@ -1,4 +1,4 @@
-import { Building2, LayoutDashboard, Tag, Users, type LucideIcon } from "lucide-react";
+import { Building2, Home, LayoutDashboard, MessageSquareText, Tag, Users, type LucideIcon } from "lucide-react";
 
 export interface NavSubItem {
   title: string;
@@ -7,6 +7,7 @@ export interface NavSubItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
+  roles?: string[];
 }
 
 export interface NavMainItem {
@@ -17,6 +18,7 @@ export interface NavMainItem {
   comingSoon?: boolean;
   newTab?: boolean;
   isNew?: boolean;
+  roles?: string[];
 }
 
 export interface NavGroup {
@@ -107,9 +109,9 @@ export const sidebarItems: NavGroup[] = [
       // },
       {
         title: "Users",
-        url: "/dashboard/coming-soon",
+        url: "/dashboard/users",
         icon: Users,
-        comingSoon: true,
+        roles: ["SUPER_ADMIN"],
       },
       // {
       //   title: "Roles",
@@ -132,6 +134,11 @@ export const sidebarItems: NavGroup[] = [
         url: "/dashboard/venues",
         icon: Building2,
       },
+      {
+        title: "Event Inquiries",
+        url: "/dashboard/event-inquiries",
+        icon: MessageSquareText,
+      },
       // {
       //   title: "Authentication",
       //   url: "/auth",
@@ -145,16 +152,15 @@ export const sidebarItems: NavGroup[] = [
       // },
     ],
   },
-  // {
-  //   id: 3,
-  //   label: "Misc",
-  //   items: [
-  //     {
-  //       title: "Others",
-  //       url: "/dashboard/coming-soon",
-  //       icon: SquareArrowUpRight,
-  //       comingSoon: true,
-  //     },
-  //   ],
-  // },
+  {
+    id: 3,
+    label: "Website Settings",
+    items: [
+      {
+        title: "Homepage Settings",
+        url: "/dashboard/homepage-settings",
+        icon: Home,
+      },
+    ],
+  },
 ];

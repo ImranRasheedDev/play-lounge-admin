@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import Link from "next/link";
 
 import { Command } from "lucide-react";
@@ -15,7 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { APP_CONFIG } from "@/config/app-config";
-import { sidebarItems } from "@/navigation/sidebar/sidebar-items";
+import { sidebarItems, type NavGroup } from "@/navigation/sidebar/sidebar-items";
 
 import { NavMain } from "./nav-main";
 import { NavUser } from "./nav-user";
@@ -33,6 +35,25 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
       }
     : null;
 
+  const userRole = session?.user?.role;
+
+  // Filter sidebar items based on user role
+  const filteredItems: NavGroup[] = React.useMemo(() => {
+    return sidebarItems
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          // If no roles specified, show to everyone
+          if (!item.roles || item.roles.length === 0) {
+            return true;
+          }
+          // Check if user has required role
+          return userRole && item.roles.includes(userRole);
+        }),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [userRole]);
+
   return (
     <Sidebar {...props}>
       <SidebarHeader>
@@ -48,7 +69,7 @@ export function AppSidebar({ session, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarItems} />
+        <NavMain items={filteredItems} />
         {/* <NavDocuments items={data.documents} /> */}
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>

@@ -125,3 +125,4 @@ If you’d like a more detailed example of this setup, check out the [Next Coloc
 Your contributions keep this project growing. 🚀
 
 **Happy Vibe Coding!**
+
