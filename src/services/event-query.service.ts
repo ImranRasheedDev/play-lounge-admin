@@ -40,3 +40,31 @@ export const updateEventQuery = async (id: string, data: EventQueryUpdateInput):
 export const deleteEventQuery = async (id: string): Promise<void> => {
   await apiClient.delete(`/event-queries/${id}`);
 };
+
+// Convert to event input type
+export interface ConvertToEventInput {
+  eventQueryId: string;
+  eventName?: string;
+  numberOfGuests: number;
+  date: string;
+  startTime: string;
+  endTime: string;
+  eventType?: string;
+  eventStyle?: string;
+  maxBudget?: string;
+  message?: string;
+  venueId: string;
+  flexibleDates?: boolean;
+}
+
+// Convert event query to host event request
+export const convertToEvent = async (
+  data: ConvertToEventInput,
+): Promise<{ eventQuery: EventQuery; hostEventRequest: unknown }> => {
+  const response = await apiClient.post<{
+    status: boolean;
+    message: string;
+    data: { eventQuery: EventQuery; hostEventRequest: unknown };
+  }>("/event-queries/convert-to-event", data);
+  return response.data.data;
+};

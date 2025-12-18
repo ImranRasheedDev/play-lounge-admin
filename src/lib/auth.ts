@@ -25,7 +25,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const res = await fetch(`${process.env.AUTH_API_URL}/api/auth/login`, {
+          // Use admin-specific login endpoint (only SUPER_ADMIN role allowed)
+          const res = await fetch(`${process.env.AUTH_API_URL}/api/auth/admin/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -37,17 +38,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
 
           if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            console.error("Admin login failed:", errorData.message ?? "Unknown error");
             return null;
           }
 
           const data = await res.json();
 
-          if (data.user) {
+          if (data.user && data.user.role === "SUPER_ADMIN") {
             return {
               id: data.user.id,
               email: data.user.email,
               name: data.user.name,
-              role: data.user.role ?? "user",
+              role: data.user.role,
               accessToken: data.access_token,
             };
           }

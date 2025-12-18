@@ -3,9 +3,12 @@ import { AxiosError } from "axios";
 import { toast } from "sonner";
 
 import {
+  convertToEvent,
   deleteEventQuery,
   getEventQueries,
+  getEventQuery,
   updateEventQuery,
+  type ConvertToEventInput,
   type EventQueryUpdateInput,
 } from "@/services/event-query.service";
 
@@ -49,6 +52,32 @@ export const useDeleteEventQuery = () => {
     },
     onError: (error: AxiosError<{ message?: string }>) => {
       toast.error(error.response?.data?.message ?? "Failed to delete event inquiry");
+    },
+  });
+};
+
+// Hook to fetch a single event query
+export const useEventQuery = (id: string) => {
+  return useQuery({
+    queryKey: [...EVENT_QUERIES_KEY, id],
+    queryFn: () => getEventQuery(id),
+    refetchOnWindowFocus: false,
+    enabled: !!id,
+  });
+};
+
+// Hook to convert event query to host event request
+export const useConvertToEvent = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ConvertToEventInput) => convertToEvent(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: EVENT_QUERIES_KEY });
+      toast.success("Event inquiry converted to event successfully");
+    },
+    onError: (error: AxiosError<{ message?: string }>) => {
+      toast.error(error.response?.data?.message ?? "Failed to convert event inquiry");
     },
   });
 };

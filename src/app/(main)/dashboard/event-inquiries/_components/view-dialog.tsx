@@ -22,12 +22,8 @@ const formatStatus = (status: EventQueryStatus) => {
   switch (status) {
     case "PENDING":
       return "Pending";
-    case "IN_PROGRESS":
-      return "In Progress";
     case "COMPLETED":
       return "Completed";
-    case "CANCELLED":
-      return "Cancelled";
     default:
       return status;
   }
@@ -37,12 +33,8 @@ const getStatusBadgeVariant = (status: EventQueryStatus) => {
   switch (status) {
     case "PENDING":
       return "secondary";
-    case "IN_PROGRESS":
-      return "default";
     case "COMPLETED":
       return "outline";
-    case "CANCELLED":
-      return "destructive";
     default:
       return "secondary";
   }
@@ -161,9 +153,7 @@ export function ViewDialog({ open, onOpenChange, inquiry, onUpdateStatus, isUpda
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                   <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

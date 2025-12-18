@@ -2,72 +2,65 @@
 
 import * as React from "react";
 
-import { useRouter } from "next/navigation";
-
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { useDataTableInstance } from "@/hooks/use-data-table-instance";
-import { useEventQueries, useDeleteEventQuery, useUpdateEventQuery } from "@/hooks/use-event-queries";
-import { EventQuery, EventQueryStatus } from "@/types/event-query";
+import {
+  useHostEventRequests,
+  useDeleteHostEventRequest,
+  useUpdateHostEventRequest,
+} from "@/hooks/use-host-event-requests";
+import { HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
 
 import { createColumns } from "./columns";
 import { DeleteAlert } from "./delete-alert";
 import { ViewDialog } from "./view-dialog";
 
-export function EventInquiriesTable() {
-  const router = useRouter();
+export function HostEventRequestsTable() {
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
   const [isViewOpen, setIsViewOpen] = React.useState(false);
-  const [selectedInquiry, setSelectedInquiry] = React.useState<EventQuery | null>(null);
+  const [selectedRequest, setSelectedRequest] = React.useState<HostEventRequest | null>(null);
 
-  const { data: inquiries = [], isLoading, dataUpdatedAt } = useEventQueries();
-  const deleteMutation = useDeleteEventQuery();
-  const updateMutation = useUpdateEventQuery();
-
-  const handleConvertToEvent = React.useCallback(
-    (inquiry: EventQuery) => {
-      router.push(`/dashboard/event-inquiries/${inquiry.id}/convert`);
-    },
-    [router],
-  );
+  const { data: requests = [], isLoading, dataUpdatedAt } = useHostEventRequests();
+  const deleteMutation = useDeleteHostEventRequest();
+  const updateMutation = useUpdateHostEventRequest();
 
   const columns = React.useMemo(
     () =>
       createColumns({
-        onView: (inquiry) => {
-          setSelectedInquiry(inquiry);
+        onView: (request) => {
+          setSelectedRequest(request);
           setIsViewOpen(true);
         },
-        onDelete: (inquiry) => {
-          setSelectedInquiry(inquiry);
+        onDelete: (request) => {
+          setSelectedRequest(request);
           setIsDeleteOpen(true);
         },
-        onConvertToEvent: handleConvertToEvent,
       }),
-    [handleConvertToEvent],
+    [],
   );
 
   const table = useDataTableInstance({
-    data: inquiries,
+    data: requests,
     columns,
     getRowId: (row) => String(row.id),
   });
 
   const handleDelete = () => {
-    if (selectedInquiry) {
-      deleteMutation.mutate(String(selectedInquiry.id));
+    if (selectedRequest) {
+      deleteMutation.mutate(String(selectedRequest.id));
     }
   };
 
-  const handleUpdateStatus = (id: string, status: EventQueryStatus, adminNotes: string) => {
+  const handleUpdateStatus = (id: string, status: HostEventRequestStatus, adminNotes: string) => {
     updateMutation.mutate(
       { id, data: { status, adminNotes } },
       {
         onSuccess: () => {
           setIsViewOpen(false);
-          setSelectedInquiry(null);
+          setSelectedRequest(null);
         },
       },
     );
@@ -77,15 +70,15 @@ export function EventInquiriesTable() {
   React.useEffect(() => {
     if (deleteMutation.isSuccess) {
       setIsDeleteOpen(false);
-      setSelectedInquiry(null);
+      setSelectedRequest(null);
     }
   }, [deleteMutation.isSuccess]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Event Inquiries</CardTitle>
-        <CardDescription>Manage event inquiries submitted through the website.</CardDescription>
+        <CardTitle>Host Event Requests</CardTitle>
+        <CardDescription>Manage host event requests submitted through the website.</CardDescription>
         <CardAction>
           <div className="flex items-center gap-2">
             <DataTableViewOptions table={table} />
@@ -94,7 +87,7 @@ export function EventInquiriesTable() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">Loading inquiries...</div>
+          <div className="flex items-center justify-center py-8">Loading requests...</div>
         ) : (
           <div className="space-y-4" key={dataUpdatedAt}>
             <div className="overflow-hidden rounded-md border">
@@ -108,14 +101,14 @@ export function EventInquiriesTable() {
       <DeleteAlert
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
-        inquiry={selectedInquiry}
+        request={selectedRequest}
         onConfirm={handleDelete}
       />
 
       <ViewDialog
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
-        inquiry={selectedInquiry}
+        request={selectedRequest}
         onUpdateStatus={handleUpdateStatus}
         isUpdating={updateMutation.isPending}
       />

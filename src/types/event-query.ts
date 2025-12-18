@@ -1,4 +1,4 @@
-export type EventQueryStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type EventQueryStatus = "PENDING" | "COMPLETED";
 
 export interface EventQuery {
   id: string;

@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ArrowRightLeft, Eye, MoreHorizontal, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,40 +11,50 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EventQuery, EventQueryStatus } from "@/types/event-query";
+import { HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
 
 interface ColumnsProps {
-  onView: (inquiry: EventQuery) => void;
-  onDelete: (inquiry: EventQuery) => void;
-  onConvertToEvent: (inquiry: EventQuery) => void;
+  onView: (request: HostEventRequest) => void;
+  onDelete: (request: HostEventRequest) => void;
 }
 
-const getStatusBadgeVariant = (status: EventQueryStatus) => {
+const getStatusBadgeVariant = (status: HostEventRequestStatus) => {
   switch (status) {
     case "PENDING":
       return "secondary";
+    case "APPROVED":
+      return "outline";
+    case "DECLINED":
+      return "destructive";
     case "COMPLETED":
       return "outline";
+    case "CANCELLED":
+      return "destructive";
     default:
       return "secondary";
   }
 };
 
-const formatStatus = (status: EventQueryStatus) => {
+const formatStatus = (status: HostEventRequestStatus) => {
   switch (status) {
     case "PENDING":
       return "Pending";
+    case "APPROVED":
+      return "Approved";
+    case "DECLINED":
+      return "Declined";
     case "COMPLETED":
       return "Completed";
+    case "CANCELLED":
+      return "Cancelled";
     default:
       return status;
   }
 };
 
-export const createColumns = ({ onView, onDelete, onConvertToEvent }: ColumnsProps): ColumnDef<EventQuery>[] => [
+export const createColumns = ({ onView, onDelete }: ColumnsProps): ColumnDef<HostEventRequest>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -69,11 +79,7 @@ export const createColumns = ({ onView, onDelete, onConvertToEvent }: ColumnsPro
   {
     accessorKey: "name",
     header: "Contact Name",
-    cell: ({ row }) => (
-      <div className="font-medium">
-        {row.original.firstName} {row.original.lastName}
-      </div>
-    ),
+    cell: ({ row }) => <div className="font-medium">{row.original.name}</div>,
   },
   {
     accessorKey: "email",
@@ -81,42 +87,52 @@ export const createColumns = ({ onView, onDelete, onConvertToEvent }: ColumnsPro
     cell: ({ row }) => <div className="text-sm">{row.original.email}</div>,
   },
   {
-    accessorKey: "phoneNumber",
+    accessorKey: "phone",
     header: "Phone",
-    cell: ({ row }) => <div className="text-sm">{row.original.phoneNumber}</div>,
+    cell: ({ row }) => <div className="text-sm">{row.original.phone ?? "—"}</div>,
+  },
+  {
+    accessorKey: "eventName",
+    header: "Event Name",
+    cell: ({ row }) => <div className="text-sm">{row.original.eventName ?? "—"}</div>,
+  },
+  {
+    accessorKey: "venue",
+    header: "Venue",
+    cell: ({ row }) => {
+      const venue = row.original.venueId;
+      if (typeof venue === "object" && venue !== null) {
+        return <div className="text-sm">{venue.name}</div>;
+      }
+      return <div className="text-muted-foreground text-sm">—</div>;
+    },
   },
   {
     accessorKey: "eventType",
     header: "Event Type",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="text-xs">
-        {row.original.eventType}
-      </Badge>
-    ),
+    cell: ({ row }) =>
+      row.original.eventType ? (
+        <Badge variant="outline" className="text-xs">
+          {row.original.eventType}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
   },
   {
-    accessorKey: "area",
-    header: "Area",
-    cell: ({ row }) => (
-      <div className="max-w-[150px] truncate text-sm" title={row.original.area}>
-        {row.original.area}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "numberOfPeople",
+    accessorKey: "numberOfGuests",
     header: "Guests",
-    cell: ({ row }) => <div className="text-sm">{row.original.numberOfPeople}</div>,
+    cell: ({ row }) => <div className="text-sm">{row.original.numberOfGuests}</div>,
   },
   {
-    accessorKey: "eventDate",
+    accessorKey: "date",
     header: "Event Date",
     cell: ({ row }) => {
       try {
-        const date = new Date(row.original.eventDate);
+        const date = new Date(row.original.date);
         return <div className="text-sm">{format(date, "MMM dd, yyyy")}</div>;
       } catch {
-        return <div className="text-sm">{row.original.eventDate}</div>;
+        return <div className="text-sm">{row.original.date}</div>;
       }
     },
   },
@@ -142,7 +158,7 @@ export const createColumns = ({ onView, onDelete, onConvertToEvent }: ColumnsPro
   {
     id: "actions",
     cell: ({ row }) => {
-      const inquiry = row.original;
+      const request = row.original;
 
       return (
         <DropdownMenu>
@@ -153,22 +169,12 @@ export const createColumns = ({ onView, onDelete, onConvertToEvent }: ColumnsPro
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onView(inquiry)} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => onView(request)} className="cursor-pointer">
               <Eye className="mr-2 size-4" />
               View Details
             </DropdownMenuItem>
-            {inquiry.status === "PENDING" && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onConvertToEvent(inquiry)} className="cursor-pointer">
-                  <ArrowRightLeft className="mr-2 size-4" />
-                  Convert to Event
-                </DropdownMenuItem>
-              </>
-            )}
-            <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => onDelete(inquiry)}
+              onClick={() => onDelete(request)}
               className="text-destructive focus:text-destructive cursor-pointer"
             >
               <Trash2 className="mr-2 size-4" />

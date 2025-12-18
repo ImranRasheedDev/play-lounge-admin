@@ -139,6 +139,11 @@ export const sidebarItems: NavGroup[] = [
         url: "/dashboard/event-inquiries",
         icon: MessageSquareText,
       },
+      {
+        title: "Host Event Requests",
+        url: "/dashboard/host-event-requests",
+        icon: MessageSquareText,
+      },
       // {
       //   title: "Authentication",
       //   url: "/auth",
