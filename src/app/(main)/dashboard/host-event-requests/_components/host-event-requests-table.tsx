@@ -12,7 +12,7 @@ import {
   useDeleteHostEventRequest,
   useUpdateHostEventRequest,
 } from "@/hooks/use-host-event-requests";
-import { HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
+import { EventRequestDocument, HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
 
 import { createColumns } from "./columns";
 import { DeleteAlert } from "./delete-alert";
@@ -54,9 +54,14 @@ export function HostEventRequestsTable() {
     }
   };
 
-  const handleUpdateStatus = (id: string, status: HostEventRequestStatus, adminNotes: string) => {
+  const handleUpdateStatus = (
+    id: string,
+    status: HostEventRequestStatus,
+    adminNotes: string,
+    documents?: EventRequestDocument[],
+  ) => {
     updateMutation.mutate(
-      { id, data: { status, adminNotes } },
+      { id, data: { status, adminNotes, documents } },
       {
         onSuccess: () => {
           setIsViewOpen(false);

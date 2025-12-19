@@ -1,5 +1,5 @@
 import apiClient from "@/lib/api-client";
-import { HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
+import { EventRequestDocument, HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
 
 export interface HostEventRequestResponse {
   status: boolean;
@@ -16,6 +16,7 @@ export interface HostEventRequestSingleResponse {
 export interface HostEventRequestUpdateInput {
   status?: HostEventRequestStatus;
   adminNotes?: string;
+  documents?: EventRequestDocument[];
 }
 
 // Get all host event requests

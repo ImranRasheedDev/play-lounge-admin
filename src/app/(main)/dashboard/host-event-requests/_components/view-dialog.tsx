@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { format } from "date-fns";
 
 import { Badge } from "@/components/ui/badge";
@@ -8,13 +10,20 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
+import { EventRequestDocument, HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
+
+import { DocumentUpload } from "./document-upload";
 
 interface ViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: HostEventRequest | null;
-  onUpdateStatus: (id: string, status: HostEventRequestStatus, adminNotes: string) => void;
+  onUpdateStatus: (
+    id: string,
+    status: HostEventRequestStatus,
+    adminNotes: string,
+    documents?: EventRequestDocument[],
+  ) => void;
   isUpdating: boolean;
 }
 
@@ -54,6 +63,15 @@ const getStatusBadgeVariant = (status: HostEventRequestStatus) => {
 
 // eslint-disable-next-line complexity -- UI component with necessary conditional rendering
 export function ViewDialog({ open, onOpenChange, request, onUpdateStatus, isUpdating }: ViewDialogProps) {
+  const [documents, setDocuments] = React.useState<EventRequestDocument[]>([]);
+
+  // Reset documents when request changes
+  React.useEffect(() => {
+    if (request) {
+      setDocuments(request.documents ?? []);
+    }
+  }, [request]);
+
   if (!request) return null;
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,7 +79,7 @@ export function ViewDialog({ open, onOpenChange, request, onUpdateStatus, isUpda
     const formData = new FormData(e.currentTarget);
     const status = formData.get("status") as HostEventRequestStatus;
     const adminNotes = formData.get("adminNotes") as string;
-    onUpdateStatus(request.id, status, adminNotes);
+    onUpdateStatus(request.id, status, adminNotes, documents);
   };
 
   const getVenueName = () => {
@@ -206,6 +224,17 @@ export function ViewDialog({ open, onOpenChange, request, onUpdateStatus, isUpda
                 rows={3}
               />
             </div>
+
+            {/* Document Upload Section - Only visible for APPROVED status */}
+            {request.status === "APPROVED" && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="text-muted-foreground text-sm font-semibold uppercase">Event Documents</h4>
+                <p className="text-muted-foreground text-xs">
+                  Upload contracts, agreements, or other relevant documents for this approved event.
+                </p>
+                <DocumentUpload documents={documents} onDocumentsChange={setDocuments} disabled={isUpdating} />
+              </div>
+            )}
 
             <Button type="submit" disabled={isUpdating} className="w-full">
               {isUpdating ? "Updating..." : "Update Request"}

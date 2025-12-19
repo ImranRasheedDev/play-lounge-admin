@@ -1,5 +1,14 @@
 export type HostEventRequestStatus = "PENDING" | "APPROVED" | "DECLINED" | "COMPLETED" | "CANCELLED";
 
+// Document attached to an approved event request
+export interface EventRequestDocument {
+  url: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+}
+
 export interface HostEventRequest {
   id: string;
   userId?:
@@ -42,6 +51,7 @@ export interface HostEventRequest {
   agreeTerms: boolean;
   agreeOffers: boolean;
   adminNotes?: string;
+  documents?: EventRequestDocument[];
   createdAt: string;
   updatedAt: string;
 }
