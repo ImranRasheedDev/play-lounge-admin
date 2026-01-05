@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { PaginationState } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -27,7 +28,23 @@ export function DietaryNeedTable() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
 
-  const { data: dietaryNeeds = [], isLoading, dataUpdatedAt } = useDietaryNeeds();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: dietaryNeedsData,
+    isLoading,
+    dataUpdatedAt,
+  } = useDietaryNeeds({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const dietaryNeeds = dietaryNeedsData?.data ?? [];
+  const pageCount = dietaryNeedsData?.meta?.totalPages ?? 0;
+
   const createMutation = useCreateDietaryNeed();
   const updateMutation = useUpdateDietaryNeed();
   const deleteMutation = useDeleteDietaryNeed();
@@ -51,6 +68,10 @@ export function DietaryNeedTable() {
     data: dietaryNeeds,
     columns,
     getRowId: (row) => row.id,
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   // Effect to handle dialog close on mutation success

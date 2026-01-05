@@ -1,10 +1,17 @@
 import apiClient from "@/lib/api-client";
 import { DietaryNeed } from "@/types/dietary-need";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 
 export interface DietaryNeedResponse {
   status: boolean;
   message: string;
   data: DietaryNeed[];
+  meta: PaginationMeta;
+}
+
+export interface DietaryNeedListResult {
+  data: DietaryNeed[];
+  meta: PaginationMeta;
 }
 
 export interface DietaryNeedCreateInput {
@@ -16,10 +23,12 @@ export interface DietaryNeedUpdateInput {
   isActive: boolean;
 }
 
-// Get all dietary needs (including inactive)
-export const getAllDietaryNeeds = async (): Promise<DietaryNeed[]> => {
-  const response = await apiClient.get<DietaryNeedResponse>("/dietary-needs/all");
-  return response.data.data;
+// Get all dietary needs with pagination (including inactive)
+export const getAllDietaryNeeds = async (params: PaginationParams): Promise<DietaryNeedListResult> => {
+  const response = await apiClient.get<DietaryNeedResponse>("/dietary-needs/all", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Get active dietary needs only

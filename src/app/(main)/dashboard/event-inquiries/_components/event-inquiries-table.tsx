@@ -4,6 +4,8 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
+import { PaginationState } from "@tanstack/react-table";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
@@ -22,7 +24,23 @@ export function EventInquiriesTable() {
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [selectedInquiry, setSelectedInquiry] = React.useState<EventQuery | null>(null);
 
-  const { data: inquiries = [], isLoading, dataUpdatedAt } = useEventQueries();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: inquiriesData,
+    isLoading,
+    dataUpdatedAt,
+  } = useEventQueries({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const inquiries = inquiriesData?.data ?? [];
+  const pageCount = inquiriesData?.meta?.totalPages ?? 0;
+
   const deleteMutation = useDeleteEventQuery();
   const updateMutation = useUpdateEventQuery();
 
@@ -53,6 +71,10 @@ export function EventInquiriesTable() {
     data: inquiries,
     columns,
     getRowId: (row) => String(row.id),
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   const handleDelete = () => {

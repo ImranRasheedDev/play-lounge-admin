@@ -1,10 +1,17 @@
 import apiClient from "@/lib/api-client";
 import { EventRequestDocument, HostEventRequest, HostEventRequestStatus } from "@/types/host-event-request";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 
 export interface HostEventRequestResponse {
   status: boolean;
   message: string;
   data: HostEventRequest[];
+  meta: PaginationMeta;
+}
+
+export interface HostEventRequestListResult {
+  data: HostEventRequest[];
+  meta: PaginationMeta;
 }
 
 export interface HostEventRequestSingleResponse {
@@ -19,10 +26,12 @@ export interface HostEventRequestUpdateInput {
   documents?: EventRequestDocument[];
 }
 
-// Get all host event requests
-export const getHostEventRequests = async (): Promise<HostEventRequest[]> => {
-  const response = await apiClient.get<HostEventRequestResponse>("/host-event-requests");
-  return response.data.data;
+// Get all host event requests with pagination
+export const getHostEventRequests = async (params: PaginationParams): Promise<HostEventRequestListResult> => {
+  const response = await apiClient.get<HostEventRequestResponse>("/host-event-requests", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Get a single host event request by ID

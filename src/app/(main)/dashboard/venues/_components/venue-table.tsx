@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { useRouter } from "next/navigation";
 
+import { PaginationState } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -11,9 +12,9 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
-import { useCategories } from "@/hooks/use-categories";
+import { useActiveCategories } from "@/hooks/use-categories";
 import { useDataTableInstance } from "@/hooks/use-data-table-instance";
-import { useVenueTypes } from "@/hooks/use-venue-types";
+import { useActiveVenueTypes } from "@/hooks/use-venue-types";
 import { useVenues, useDeleteVenue } from "@/hooks/use-venues";
 import { Venue } from "@/types/venue";
 
@@ -25,9 +26,27 @@ export function VenueTable() {
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
   const [selectedVenue, setSelectedVenue] = React.useState<Venue | null>(null);
 
-  const { data: venues = [], isLoading, dataUpdatedAt } = useVenues();
-  const { data: categories = [] } = useCategories();
-  const { data: venueTypes = [] } = useVenueTypes();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: venuesData,
+    isLoading,
+    dataUpdatedAt,
+  } = useVenues({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const venues = venuesData?.data ?? [];
+  const pageCount = venuesData?.meta?.totalPages ?? 0;
+
+  const { data: categoriesData } = useActiveCategories();
+  const categories = categoriesData ?? [];
+  const { data: venueTypesData } = useActiveVenueTypes();
+  const venueTypes = venueTypesData ?? [];
   const deleteMutation = useDeleteVenue();
 
   const getCategoryNames = React.useCallback(
@@ -70,6 +89,10 @@ export function VenueTable() {
     data: venues,
     columns,
     getRowId: (row) => String(row.id),
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   const handleCreate = () => {

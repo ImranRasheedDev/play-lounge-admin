@@ -1,10 +1,17 @@
 import apiClient from "@/lib/api-client";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 import { VenueType } from "@/types/venue-type";
 
 export interface VenueTypeResponse {
   status: boolean;
   message: string;
   data: VenueType[];
+  meta: PaginationMeta;
+}
+
+export interface VenueTypeListResult {
+  data: VenueType[];
+  meta: PaginationMeta;
 }
 
 export interface VenueTypeCreateInput {
@@ -16,10 +23,12 @@ export interface VenueTypeUpdateInput {
   isActive: boolean;
 }
 
-// Get all venue types (including inactive)
-export const getAllVenueTypes = async (): Promise<VenueType[]> => {
-  const response = await apiClient.get<VenueTypeResponse>("/venue-types/all");
-  return response.data.data;
+// Get all venue types with pagination (including inactive)
+export const getAllVenueTypes = async (params: PaginationParams): Promise<VenueTypeListResult> => {
+  const response = await apiClient.get<VenueTypeResponse>("/venue-types/all", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Get active venue types only

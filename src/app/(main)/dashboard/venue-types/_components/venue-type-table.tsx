@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { PaginationState } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -22,7 +23,23 @@ export function VenueTypeTable() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
 
-  const { data: venueTypes = [], isLoading, dataUpdatedAt } = useVenueTypes();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: venueTypesData,
+    isLoading,
+    dataUpdatedAt,
+  } = useVenueTypes({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const venueTypes = venueTypesData?.data ?? [];
+  const pageCount = venueTypesData?.meta?.totalPages ?? 0;
+
   const createMutation = useCreateVenueType();
   const updateMutation = useUpdateVenueType();
   const deleteMutation = useDeleteVenueType();
@@ -46,6 +63,10 @@ export function VenueTypeTable() {
     data: venueTypes,
     columns,
     getRowId: (row) => row.id,
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   // Effect to handle dialog close on mutation success

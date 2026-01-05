@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -11,16 +11,18 @@ import {
   type ConvertToEventInput,
   type EventQueryUpdateInput,
 } from "@/services/event-query.service";
+import { PaginationParams } from "@/types/pagination";
 
 const EVENT_QUERIES_KEY = ["event-queries"];
 
-// Hook to fetch all event queries
-export const useEventQueries = () => {
+// Hook to fetch all event queries with pagination
+export const useEventQueries = (params: PaginationParams) => {
   return useQuery({
-    queryKey: EVENT_QUERIES_KEY,
-    queryFn: getEventQueries,
+    queryKey: [...EVENT_QUERIES_KEY, params.page, params.limit],
+    queryFn: () => getEventQueries(params),
     refetchOnWindowFocus: false,
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

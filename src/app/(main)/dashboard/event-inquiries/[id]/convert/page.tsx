@@ -45,7 +45,8 @@ export default function ConvertToEventPage() {
   const eventQueryId = params.id as string;
 
   const { data: eventQuery, isLoading: isLoadingQuery } = useEventQuery(eventQueryId);
-  const { data: venues = [], isLoading: isLoadingVenues } = useVenues();
+  const { data: venuesData, isLoading: isLoadingVenues } = useVenues();
+  const venues = venuesData?.data ?? [];
   const convertMutation = useConvertToEvent();
 
   const form = useForm<ConvertFormValues>({

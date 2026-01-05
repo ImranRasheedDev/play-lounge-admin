@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -10,16 +10,21 @@ import {
   type VenueCreateInput,
   type VenueUpdateInput,
 } from "@/services/venue.service";
+import { PaginationParams } from "@/types/pagination";
 
 const VENUES_QUERY_KEY = ["venues"];
 
-// Hook to fetch all venues
-export const useVenues = () => {
+// Hook to fetch all venues with optional pagination
+// When params are provided, fetches with pagination
+// When params are not provided, fetches all venues (high limit)
+export const useVenues = (params?: PaginationParams) => {
+  const effectiveParams = params ?? { page: 1, limit: 1000 };
   return useQuery({
-    queryKey: VENUES_QUERY_KEY,
-    queryFn: getVenues,
+    queryKey: params ? [...VENUES_QUERY_KEY, params.page, params.limit] : [...VENUES_QUERY_KEY, "all"],
+    queryFn: () => getVenues(effectiveParams),
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always consider data stale for immediate refetch
+    staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { PaginationState } from "@tanstack/react-table";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
@@ -23,7 +25,23 @@ export function HostEventRequestsTable() {
   const [isViewOpen, setIsViewOpen] = React.useState(false);
   const [selectedRequest, setSelectedRequest] = React.useState<HostEventRequest | null>(null);
 
-  const { data: requests = [], isLoading, dataUpdatedAt } = useHostEventRequests();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: requestsData,
+    isLoading,
+    dataUpdatedAt,
+  } = useHostEventRequests({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const requests = requestsData?.data ?? [];
+  const pageCount = requestsData?.meta?.totalPages ?? 0;
+
   const deleteMutation = useDeleteHostEventRequest();
   const updateMutation = useUpdateHostEventRequest();
 
@@ -46,6 +64,10 @@ export function HostEventRequestsTable() {
     data: requests,
     columns,
     getRowId: (row) => String(row.id),
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   const handleDelete = () => {

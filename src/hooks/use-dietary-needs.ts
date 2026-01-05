@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -11,17 +11,19 @@ import {
   type DietaryNeedCreateInput,
   type DietaryNeedUpdateInput,
 } from "@/services/dietary-need.service";
+import { PaginationParams } from "@/types/pagination";
 
 const DIETARY_NEEDS_QUERY_KEY = ["dietary-needs"];
 const ACTIVE_DIETARY_NEEDS_QUERY_KEY = ["dietary-needs", "active"];
 
-// Hook to fetch all dietary needs (including inactive) - for dietary needs page
-export const useDietaryNeeds = () => {
+// Hook to fetch all dietary needs with pagination (including inactive) - for dietary needs page
+export const useDietaryNeeds = (params: PaginationParams) => {
   return useQuery({
-    queryKey: DIETARY_NEEDS_QUERY_KEY,
-    queryFn: getAllDietaryNeeds,
+    queryKey: [...DIETARY_NEEDS_QUERY_KEY, params.page, params.limit],
+    queryFn: () => getAllDietaryNeeds(params),
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always consider data stale for immediate refetch
+    staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

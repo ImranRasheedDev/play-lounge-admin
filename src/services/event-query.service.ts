@@ -1,10 +1,17 @@
 import apiClient from "@/lib/api-client";
 import { EventQuery, EventQueryStatus } from "@/types/event-query";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 
 export interface EventQueryResponse {
   status: boolean;
   message: string;
   data: EventQuery[];
+  meta: PaginationMeta;
+}
+
+export interface EventQueryListResult {
+  data: EventQuery[];
+  meta: PaginationMeta;
 }
 
 export interface EventQuerySingleResponse {
@@ -18,10 +25,12 @@ export interface EventQueryUpdateInput {
   adminNotes?: string;
 }
 
-// Get all event queries
-export const getEventQueries = async (): Promise<EventQuery[]> => {
-  const response = await apiClient.get<EventQueryResponse>("/event-queries");
-  return response.data.data;
+// Get all event queries with pagination
+export const getEventQueries = async (params: PaginationParams): Promise<EventQueryListResult> => {
+  const response = await apiClient.get<EventQueryResponse>("/event-queries", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Get a single event query by ID

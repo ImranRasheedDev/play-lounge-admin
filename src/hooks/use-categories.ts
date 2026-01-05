@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -11,17 +11,19 @@ import {
   type CategoryCreateInput,
   type CategoryUpdateInput,
 } from "@/services/category.service";
+import { PaginationParams } from "@/types/pagination";
 
 const CATEGORIES_QUERY_KEY = ["categories"];
 const ACTIVE_CATEGORIES_QUERY_KEY = ["categories", "active"];
 
-// Hook to fetch all categories (including inactive) - for categories page
-export const useCategories = () => {
+// Hook to fetch all categories with pagination (including inactive) - for categories page
+export const useCategories = (params?: PaginationParams) => {
   return useQuery({
-    queryKey: CATEGORIES_QUERY_KEY,
-    queryFn: getAllCategories,
+    queryKey: params ? [...CATEGORIES_QUERY_KEY, params.page, params.limit] : CATEGORIES_QUERY_KEY,
+    queryFn: () => (params ? getAllCategories(params) : getAllCategories({ page: 1, limit: 100 })),
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always consider data stale for immediate refetch
+    staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

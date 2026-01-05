@@ -1,6 +1,7 @@
 /* eslint-disable max-lines -- Venue service requires extensive API methods */
 import apiClient from "@/lib/api-client";
 import { uploadFile } from "@/lib/upload-utils";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 import { Venue } from "@/types/venue";
 
 export interface DayHours {
@@ -35,6 +36,12 @@ export interface VenueResponse {
   status: boolean;
   message: string;
   data: Venue[];
+  meta: PaginationMeta;
+}
+
+export interface VenueListResult {
+  data: Venue[];
+  meta: PaginationMeta;
 }
 
 export interface VenueCreateInput {
@@ -111,10 +118,12 @@ export interface VenueUpdateInput {
   isTrending?: boolean;
 }
 
-// Get all venues
-export const getVenues = async (): Promise<Venue[]> => {
-  const response = await apiClient.get<VenueResponse>("/venues/all");
-  return response.data.data;
+// Get all venues with pagination
+export const getVenues = async (params: PaginationParams): Promise<VenueListResult> => {
+  const response = await apiClient.get<VenueResponse>("/venues/all", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Create a new venue

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -11,17 +11,19 @@ import {
   type VenueTypeCreateInput,
   type VenueTypeUpdateInput,
 } from "@/services/venue-type.service";
+import { PaginationParams } from "@/types/pagination";
 
 const VENUE_TYPES_QUERY_KEY = ["venue-types"];
 const ACTIVE_VENUE_TYPES_QUERY_KEY = ["venue-types", "active"];
 
-// Hook to fetch all venue types (including inactive) - for venue types page
-export const useVenueTypes = () => {
+// Hook to fetch all venue types with pagination (including inactive) - for venue types page
+export const useVenueTypes = (params?: PaginationParams) => {
   return useQuery({
-    queryKey: VENUE_TYPES_QUERY_KEY,
-    queryFn: getAllVenueTypes,
+    queryKey: params ? [...VENUE_TYPES_QUERY_KEY, params.page, params.limit] : VENUE_TYPES_QUERY_KEY,
+    queryFn: () => (params ? getAllVenueTypes(params) : getAllVenueTypes({ page: 1, limit: 100 })),
     refetchOnWindowFocus: false,
-    staleTime: 0, // Always consider data stale for immediate refetch
+    staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

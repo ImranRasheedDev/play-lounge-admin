@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { toast } from "sonner";
 
@@ -8,16 +8,18 @@ import {
   updateHostEventRequest,
   type HostEventRequestUpdateInput,
 } from "@/services/host-event-request.service";
+import { PaginationParams } from "@/types/pagination";
 
 const HOST_EVENT_REQUESTS_KEY = ["host-event-requests"];
 
-// Hook to fetch all host event requests
-export const useHostEventRequests = () => {
+// Hook to fetch all host event requests with pagination
+export const useHostEventRequests = (params: PaginationParams) => {
   return useQuery({
-    queryKey: HOST_EVENT_REQUESTS_KEY,
-    queryFn: getHostEventRequests,
+    queryKey: [...HOST_EVENT_REQUESTS_KEY, params.page, params.limit],
+    queryFn: () => getHostEventRequests(params),
     refetchOnWindowFocus: false,
     staleTime: 0,
+    placeholderData: keepPreviousData,
   });
 };
 

@@ -58,7 +58,8 @@ function VideoUploadBox({ accept = "video/*", onChange }: VideoUploadBoxProps) {
 }
 
 export function PrimarySponsoredVenueForm() {
-  const { data: venues = [], isLoading } = useVenues();
+  const { data: venuesData, isLoading } = useVenues();
+  const venues = venuesData?.data ?? [];
   const [videoPreview, setVideoPreview] = React.useState<string>("");
   const videoRef = React.useRef<HTMLVideoElement>(null);
 

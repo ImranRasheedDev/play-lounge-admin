@@ -3,6 +3,8 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
+  PaginationState,
   SortingState,
   VisibilityState,
   getCoreRowModel,
@@ -21,6 +23,11 @@ type UseDataTableInstanceProps<TData, TValue> = {
   defaultPageIndex?: number;
   defaultPageSize?: number;
   getRowId?: (row: TData, index: number) => string;
+  // Server-side pagination props
+  manualPagination?: boolean;
+  pageCount?: number;
+  pagination?: PaginationState;
+  onPaginationChange?: OnChangeFn<PaginationState>;
 };
 
 export function useDataTableInstance<TData, TValue>({
@@ -30,15 +37,24 @@ export function useDataTableInstance<TData, TValue>({
   defaultPageIndex,
   defaultPageSize,
   getRowId,
+  // Server-side pagination
+  manualPagination = false,
+  pageCount,
+  pagination: externalPagination,
+  onPaginationChange: externalOnPaginationChange,
 }: UseDataTableInstanceProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [pagination, setPagination] = React.useState({
+  const [internalPagination, setInternalPagination] = React.useState({
     pageIndex: defaultPageIndex ?? 0,
     pageSize: defaultPageSize ?? 10,
   });
+
+  // Use external pagination state if provided (for server-side pagination)
+  const pagination = externalPagination ?? internalPagination;
+  const onPaginationChange = externalOnPaginationChange ?? setInternalPagination;
 
   const table = useReactTable({
     data,
@@ -56,13 +72,17 @@ export function useDataTableInstance<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // Only use client-side pagination row model when not using manual pagination
+    ...(manualPagination ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    // Server-side pagination config
+    manualPagination,
+    pageCount,
   });
 
   return table;

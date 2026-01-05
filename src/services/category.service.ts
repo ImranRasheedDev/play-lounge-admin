@@ -1,11 +1,18 @@
 import apiClient from "@/lib/api-client";
 import { uploadFile } from "@/lib/upload-utils";
 import { Category } from "@/types/category";
+import { PaginationParams, PaginationMeta } from "@/types/pagination";
 
 export interface CategoryResponse {
   status: boolean;
   message: string;
   data: Category[];
+  meta: PaginationMeta;
+}
+
+export interface CategoryListResult {
+  data: Category[];
+  meta: PaginationMeta;
 }
 
 export interface CategoryCreateInput {
@@ -25,10 +32,12 @@ export interface CategoryUpdateInput {
   isFeatured: boolean;
 }
 
-// Get all categories (including inactive)
-export const getAllCategories = async (): Promise<Category[]> => {
-  const response = await apiClient.get<CategoryResponse>("/categories/all");
-  return response.data.data;
+// Get all categories with pagination (including inactive)
+export const getAllCategories = async (params: PaginationParams): Promise<CategoryListResult> => {
+  const response = await apiClient.get<CategoryResponse>("/categories/all", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
 };
 
 // Get active categories only

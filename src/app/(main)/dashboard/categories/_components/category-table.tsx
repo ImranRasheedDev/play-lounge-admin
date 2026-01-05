@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { PaginationState } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -22,7 +23,23 @@ export function CategoryTable() {
   const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
   const [selectedCategory, setSelectedCategory] = React.useState<Category | null>(null);
 
-  const { data: categories = [], isLoading, dataUpdatedAt } = useCategories();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: categoriesData,
+    isLoading,
+    dataUpdatedAt,
+  } = useCategories({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const categories = categoriesData?.data ?? [];
+  const pageCount = categoriesData?.meta?.totalPages ?? 0;
+
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -46,6 +63,10 @@ export function CategoryTable() {
     data: categories,
     columns,
     getRowId: (row) => row.id,
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   const handleCreate = () => {

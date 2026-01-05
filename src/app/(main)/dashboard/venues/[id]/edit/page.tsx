@@ -11,9 +11,10 @@ export default function EditVenuePage() {
   const params = useParams();
   const router = useRouter();
   const venueId = params.id as string;
-  const { data: venues, isLoading } = useVenues();
+  const { data: venuesData, isLoading } = useVenues();
+  const venues = venuesData?.data ?? [];
 
-  const venue = venues?.find((v) => v.id === venueId);
+  const venue = venues.find((v) => v.id === venueId);
 
   if (isLoading) {
     return (
