@@ -65,6 +65,7 @@ export const venueSchema = z.object({
   isActive: z.boolean().default(true),
   isSponsored: z.boolean().default(false),
   isTrending: z.boolean().default(false),
+  videoUrl: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
 });
@@ -138,6 +139,7 @@ export const venueFormSchema = z.object({
   isActive: z.boolean().default(true),
   isSponsored: z.boolean().default(false),
   isTrending: z.boolean().default(false),
+  videoUrl: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
 });
 
 export type VenueFormValues = z.infer<typeof venueFormSchema>;

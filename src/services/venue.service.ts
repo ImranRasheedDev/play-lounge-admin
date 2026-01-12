@@ -77,6 +77,9 @@ export interface VenueCreateInput {
   openHours?: OpenHours;
   isSponsored?: boolean;
   isTrending?: boolean;
+  // Video
+  video?: File;
+  videoUrl?: string;
 }
 
 export interface VenueUpdateInput {
@@ -116,6 +119,10 @@ export interface VenueUpdateInput {
   isActive: boolean;
   isSponsored?: boolean;
   isTrending?: boolean;
+  // Video
+  video?: File;
+  videoUrl?: string;
+  existingVideoUrl?: string;
 }
 
 // Get all venues with pagination
@@ -166,6 +173,12 @@ export const createVenue = async (data: VenueCreateInput): Promise<Venue> => {
     }),
   );
 
+  // Upload video to S3 if provided as file, otherwise use the URL
+  let videoUrl = data.videoUrl ?? "";
+  if (data.video instanceof File) {
+    videoUrl = await uploadFile(data.video, "venues/videos");
+  }
+
   // Send data as JSON to backend
   const payload = {
     name: data.name,
@@ -198,6 +211,7 @@ export const createVenue = async (data: VenueCreateInput): Promise<Venue> => {
     openHours: data.openHours,
     isSponsored: data.isSponsored,
     isTrending: data.isTrending,
+    videoUrl: videoUrl || undefined,
   };
 
   const response = await apiClient.post<{ data: Venue }>("/venues", payload, {
@@ -209,7 +223,7 @@ export const createVenue = async (data: VenueCreateInput): Promise<Venue> => {
 };
 
 // Update an existing venue
-
+// eslint-disable-next-line complexity -- Complex function handling multiple file uploads
 export const updateVenue = async (id: string, data: VenueUpdateInput): Promise<Venue> => {
   // Upload thumbnail to S3 if new file provided
   let thumbnailUrl = data.existingThumbnail;
@@ -257,6 +271,14 @@ export const updateVenue = async (id: string, data: VenueUpdateInput): Promise<V
       )
     : undefined;
 
+  // Upload video to S3 if new file provided, otherwise use existing or new URL
+  let videoUrl = data.existingVideoUrl ?? data.videoUrl ?? "";
+  if (data.video instanceof File) {
+    videoUrl = await uploadFile(data.video, "venues/videos");
+  } else if (data.videoUrl) {
+    videoUrl = data.videoUrl;
+  }
+
   // Prepare payload
   const payload: {
     name: string;
@@ -292,6 +314,7 @@ export const updateVenue = async (id: string, data: VenueUpdateInput): Promise<V
     openHours?: OpenHours;
     isSponsored?: boolean;
     isTrending?: boolean;
+    videoUrl?: string;
   } = {
     name: data.name,
     categoryId: data.categoryId,
@@ -344,6 +367,10 @@ export const updateVenue = async (id: string, data: VenueUpdateInput): Promise<V
 
   if (data.existingExperiences) {
     payload.existingExperiences = data.existingExperiences;
+  }
+
+  if (videoUrl) {
+    payload.videoUrl = videoUrl;
   }
 
   const response = await apiClient.patch<{ data: Venue }>(`/venues/${id}`, payload, {

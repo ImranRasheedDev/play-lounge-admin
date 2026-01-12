@@ -412,6 +412,11 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
   const [thumbnailPreview, setThumbnailPreview] = React.useState<string>("");
   const [thumbnailFile, setThumbnailFile] = React.useState<File | null>(null);
   const [existingThumbnail, setExistingThumbnail] = React.useState<string>("");
+  // Video state
+  const [videoInputType, setVideoInputType] = React.useState<"upload" | "link">("link");
+  const [videoFile, setVideoFile] = React.useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = React.useState<string>("");
+  const [existingVideoUrl, setExistingVideoUrl] = React.useState<string>("");
   const [experiences, setExperiences] = React.useState<
     Array<{
       image: File | string;
@@ -487,6 +492,7 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
       isActive: venue?.isActive ?? true,
       isSponsored: venue?.isSponsored ?? false,
       isTrending: venue?.isTrending ?? false,
+      videoUrl: (venue as any)?.videoUrl ?? "",
     },
   });
 
@@ -537,6 +543,14 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
           description: exp.description,
         }));
         setExperiences(loadedExperiences);
+      }
+
+      // Set existing video
+      if ((venue as any).videoUrl) {
+        setExistingVideoUrl((venue as any).videoUrl);
+        setVideoPreview((venue as any).videoUrl);
+        form.setValue("videoUrl", (venue as any).videoUrl);
+        setVideoInputType("link");
       }
     }
   }, [venue, mode]);
@@ -836,6 +850,9 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
             existingExperiences: experiences
               .filter((exp) => typeof exp.image === "string")
               .map((exp) => exp.image as string),
+            video: videoFile ?? undefined,
+            videoUrl: videoInputType === "link" ? data.videoUrl : undefined,
+            existingVideoUrl: existingVideoUrl ?? undefined,
             atmosphere: data.atmosphere,
             foodOptions: data.foodOptions,
             dressCode: data.dressCode,
@@ -905,6 +922,8 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
         openHours: data.openHours,
         isSponsored: data.isSponsored,
         isTrending: data.isTrending,
+        video: videoFile ?? undefined,
+        videoUrl: videoInputType === "link" ? data.videoUrl : undefined,
       };
 
       console.log("Creating venue with data:", createData);
@@ -1182,6 +1201,134 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Video Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Video</CardTitle>
+                <CardDescription>
+                  Add a video by uploading a file or providing a link (YouTube, Vimeo, etc.)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Video Input Type Toggle */}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={videoInputType === "link" ? "default" : "outline"}
+                    onClick={() => {
+                      setVideoInputType("link");
+                      setVideoFile(null);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    Add Link
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={videoInputType === "upload" ? "default" : "outline"}
+                    onClick={() => {
+                      setVideoInputType("upload");
+                      form.setValue("videoUrl", "");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    Upload Video
+                  </Button>
+                </div>
+
+                {videoInputType === "link" ? (
+                  <FormField
+                    control={form.control}
+                    name="videoUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Video Link</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              setVideoPreview(e.target.value);
+                              setExistingVideoUrl("");
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <FormLabel>Upload Video</FormLabel>
+                    {videoPreview && videoFile ? (
+                      <div className="relative">
+                        <video
+                          src={videoPreview}
+                          controls
+                          className="h-[180px] w-full max-w-[400px] rounded-md border object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setVideoFile(null);
+                            setVideoPreview("");
+                          }}
+                          className="bg-destructive text-destructive-foreground absolute top-2 right-2 cursor-pointer rounded-full p-1.5"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="hover:border-primary flex h-[180px] w-[275px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-colors dark:border-gray-700 dark:bg-gray-900">
+                        <input
+                          type="file"
+                          accept="video/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setVideoFile(file);
+                              const url = URL.createObjectURL(file);
+                              setVideoPreview(url);
+                              setExistingVideoUrl("");
+                            }
+                          }}
+                          className="hidden"
+                          id="video-upload"
+                        />
+                        <label
+                          htmlFor="video-upload"
+                          className="flex h-full w-full cursor-pointer flex-col items-center justify-center"
+                        >
+                          <Plus className="text-muted-foreground h-8 w-8" />
+                          <span className="text-muted-foreground mt-2 text-sm font-medium">Click to upload video</span>
+                          <span className="text-muted-foreground text-xs">MP4, WebM, etc.</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Show existing video preview for link type */}
+                {videoInputType === "link" && videoPreview && (
+                  <div className="mt-4">
+                    <FormLabel>Preview</FormLabel>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Video link:{" "}
+                      <a
+                        href={videoPreview}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline"
+                      >
+                        {videoPreview}
+                      </a>
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

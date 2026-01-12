@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
       folder = process.env.AWS_S3_VENUES_IMAGES_PATH;
     } else if (folder === "venues/experiences" && process.env.AWS_S3_VENUES_EXPERIENCES_PATH) {
       folder = process.env.AWS_S3_VENUES_EXPERIENCES_PATH;
+    } else if (folder === "venues/videos" && process.env.AWS_S3_VENUES_VIDEOS_PATH) {
+      folder = process.env.AWS_S3_VENUES_VIDEOS_PATH;
     }
 
     // Upload file to S3
