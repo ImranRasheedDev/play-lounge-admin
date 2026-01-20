@@ -19,6 +19,7 @@ npm run format:check  # Check formatting without modifying
 ## Architecture
 
 ### Colocation-Based Structure
+
 Features are organized within their route folders. Each dashboard feature contains its own components, schemas, and logic:
 
 ```
@@ -34,6 +35,7 @@ src/app/(main)/dashboard/venues/
 ```
 
 ### Key Directories
+
 - `src/app/(main)/` - Authenticated routes (dashboard, auth)
 - `src/app/(external)/` - Public routes
 - `src/components/ui/` - shadcn/ui components (auto-generated, ESLint-ignored)
@@ -46,34 +48,60 @@ src/app/(main)/dashboard/venues/
 - `src/lib/` - Utilities (api-client, auth, s3-upload)
 
 ### Data Flow Pattern
+
 1. **Services** (`src/services/*.service.ts`) - Axios calls to backend API
 2. **Hooks** (`src/hooks/use-*.ts`) - TanStack Query wrappers with cache invalidation
 3. **Components** - Consume hooks, handle UI state
 
 Example:
+
 ```
 venue.service.ts → useVenues() hook → VenueTable component
 ```
 
+### Server-Side Pagination
+
+Tables use server-side pagination with the `PaginationParams` and `PaginationMeta` types from `@/types/pagination`:
+
+- Hooks accept optional `{ page, limit }` params
+- Without params, hooks fetch all data (limit: 1000)
+- Query keys include pagination params for proper cache invalidation
+- Uses `keepPreviousData` for smooth page transitions
+
 ### Authentication
+
 - NextAuth v5 with credentials provider (`src/lib/auth.ts`)
 - Admin-only login via `/api/auth/admin/login` endpoint
 - Only `SUPER_ADMIN` role can access the dashboard
 - JWT tokens stored in session, passed via axios interceptors
 
 ### API Client
+
 - Configured in `src/lib/api-client.ts`
-- Base URL from `NEXT_PUBLIC_API_URL` environment variable
-- Auto-attaches JWT from NextAuth session
-- Auto-logout on 401 responses
+- Base URL: `${NEXT_PUBLIC_API_URL}/api`
+- Auto-attaches JWT from NextAuth session via request interceptor
+- Auto-logout on 401 responses via response interceptor
+- 30-second timeout
 
 ### File Uploads
-- S3 uploads handled via `src/lib/s3-upload.ts` and `src/lib/upload-utils.ts`
-- Files uploaded client-side before API payload is sent
+
+Files are uploaded client-side to S3 before sending the API payload:
+
+1. Use `uploadFile(file, folder)` from `@/lib/upload-utils.ts`
+2. Function posts to `/api/upload` Next.js route
+3. Returns the public S3 URL to include in API payload
+
+Example in services:
+
+```typescript
+const thumbnailUrl = await uploadFile(data.thumbnail, "venues/thumbnails");
+// Then include thumbnailUrl in API payload
+```
 
 ## Environment Variables
 
 Required in `.env.local`:
+
 - `NEXT_PUBLIC_API_URL` - Backend API base URL
 - `NEXT_PUBLIC_BACKEND_URL` - Backend URL for rewrites
 - `AUTH_API_URL` - Auth endpoint URL (server-side)
@@ -82,18 +110,21 @@ Required in `.env.local`:
 ## Coding Conventions
 
 ### File Naming
+
 - Kebab-case enforced by ESLint (`unicorn/filename-case`)
 - Exceptions: `*.config.ts`, `*.d.ts`
 
 ### Import Order (ESLint enforced)
+
 1. React
 2. Next.js
 3. External packages
 4. Internal (`@/*` paths)
 
 ### ESLint Rules
-- Max file length: 300 lines
-- Max complexity: 10
+
+- Max file length: 300 lines (use `/* eslint-disable max-lines */` for complex services)
+- Max complexity: 10 (use `/* eslint-disable complexity */` for complex functions)
 - Max nesting: 4 levels
 - Nullish coalescing required (`??` over `||`)
 - No array index keys in JSX
@@ -105,3 +136,43 @@ Required in `.env.local`:
 3. Add TanStack Query hook in `src/hooks/use-[feature].ts`
 4. Add type in `src/types/[feature].ts`
 5. Add to sidebar in `src/navigation/sidebar/sidebar-items.ts`
+
+### Hook Pattern
+
+```typescript
+const QUERY_KEY = ["feature"];
+
+export const useFeatures = (params?: PaginationParams) => {
+  const effectiveParams = params ?? { page: 1, limit: 1000 };
+  return useQuery({
+    queryKey: params ? [...QUERY_KEY, params.page, params.limit] : [...QUERY_KEY, "all"],
+    queryFn: () => getFeatures(effectiveParams),
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useCreateFeature = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateInput) => createFeature(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success("Created successfully");
+    },
+    onError: (error: AxiosError<{ message?: string }>) => {
+      toast.error(error.response?.data?.message ?? "Failed to create");
+    },
+  });
+};
+```
+
+### Service Pattern
+
+```typescript
+export const getFeatures = async (params: PaginationParams): Promise<FeatureListResult> => {
+  const response = await apiClient.get<FeatureResponse>("/features", {
+    params: { page: params.page, limit: params.limit },
+  });
+  return { data: response.data.data, meta: response.data.meta };
+};
+```

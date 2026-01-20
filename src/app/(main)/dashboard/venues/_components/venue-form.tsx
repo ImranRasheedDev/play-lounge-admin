@@ -417,6 +417,18 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
   const [videoFile, setVideoFile] = React.useState<File | null>(null);
   const [videoPreview, setVideoPreview] = React.useState<string>("");
   const [existingVideoUrl, setExistingVideoUrl] = React.useState<string>("");
+
+  // Helper function to detect if a URL is an AWS S3 video URL
+  const isS3VideoUrl = (url: string): boolean => {
+    if (!url) return false;
+    // Match common S3 URL patterns
+    return url.includes(".s3.") && url.includes(".amazonaws.com");
+  };
+
+  // Maximum video file size (100MB)
+  const MAX_VIDEO_SIZE_MB = 100;
+  const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+
   const [experiences, setExperiences] = React.useState<
     Array<{
       image: File | string;
@@ -547,10 +559,12 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
 
       // Set existing video
       if ((venue as any).videoUrl) {
-        setExistingVideoUrl((venue as any).videoUrl);
-        setVideoPreview((venue as any).videoUrl);
-        form.setValue("videoUrl", (venue as any).videoUrl);
-        setVideoInputType("link");
+        const videoUrl = (venue as any).videoUrl;
+        setExistingVideoUrl(videoUrl);
+        setVideoPreview(videoUrl);
+        form.setValue("videoUrl", videoUrl);
+        // If it's an S3 uploaded video, show as upload; otherwise show as link
+        setVideoInputType(isS3VideoUrl(videoUrl) ? "upload" : "link");
       }
     }
   }, [venue, mode]);
@@ -1264,7 +1278,7 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                 ) : (
                   <div className="space-y-2">
                     <FormLabel>Upload Video</FormLabel>
-                    {videoPreview && videoFile ? (
+                    {videoPreview && (videoFile || isS3VideoUrl(existingVideoUrl)) ? (
                       <div className="relative">
                         <video
                           src={videoPreview}
@@ -1276,6 +1290,7 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                           onClick={() => {
                             setVideoFile(null);
                             setVideoPreview("");
+                            setExistingVideoUrl("");
                           }}
                           className="bg-destructive text-destructive-foreground absolute top-2 right-2 cursor-pointer rounded-full p-1.5"
                         >
@@ -1290,6 +1305,12 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              // Check file size
+                              if (file.size > MAX_VIDEO_SIZE_BYTES) {
+                                toast.error(`Video file is too large. Maximum size is ${MAX_VIDEO_SIZE_MB}MB.`);
+                                e.target.value = "";
+                                return;
+                              }
                               setVideoFile(file);
                               const url = URL.createObjectURL(file);
                               setVideoPreview(url);
@@ -1305,7 +1326,9 @@ export function VenueForm({ venue, mode }: VenueFormProps) {
                         >
                           <Plus className="text-muted-foreground h-8 w-8" />
                           <span className="text-muted-foreground mt-2 text-sm font-medium">Click to upload video</span>
-                          <span className="text-muted-foreground text-xs">MP4, WebM, etc.</span>
+                          <span className="text-muted-foreground text-xs">
+                            MP4, WebM, etc. (Max {MAX_VIDEO_SIZE_MB}MB)
+                          </span>
                         </label>
                       </div>
                     )}
