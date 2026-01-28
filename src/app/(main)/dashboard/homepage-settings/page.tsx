@@ -1,24 +1,14 @@
 "use client";
 
-import { BannerForm } from "./_components/banner-form";
-import { EventConciergeForm } from "./_components/event-concierge-form";
-import { HomepageCardsForm } from "./_components/homepage-cards-form";
-import { PrimarySponsoredVenueForm } from "./_components/primary-sponsored-venue-form";
+import { HomepageSettingsForm } from "./_components/homepage-settings-form";
 
 export default function HomepageSettingsPage() {
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="flex flex-col gap-4 md:gap-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Homepage Settings</h1>
-        <p className="text-muted-foreground text-sm">Manage your homepage content and settings</p>
       </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <BannerForm />
-        <PrimarySponsoredVenueForm />
-        <HomepageCardsForm />
-        <EventConciergeForm />
-      </div>
+      <HomepageSettingsForm />
     </div>
   );
 }

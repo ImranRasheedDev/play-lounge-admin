@@ -7,6 +7,12 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "100mb",
+    },
+    middlewareClientMaxBodySize: "100mb",
+  },
   async redirects() {
     return [
       {

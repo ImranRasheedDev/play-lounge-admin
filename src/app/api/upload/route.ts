@@ -2,23 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { uploadFileToS3 } from "@/lib/s3-upload";
 
-// Increase body size limit for video uploads (100MB)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "100mb",
-    },
-  },
-};
+// App Router config for handling large file uploads
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // File size limits in bytes
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
 
 // eslint-disable-next-line complexity -- Folder mapping requires multiple conditional checks
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    // Check content type
+    const contentType = request.headers.get("content-type") ?? "";
+    if (!contentType.includes("multipart/form-data")) {
+      return NextResponse.json({ error: `Request must be multipart/form-data. Got: ${contentType}` }, { status: 400 });
+    }
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch (parseError) {
+      console.error("FormData parse error:", parseError);
+      return NextResponse.json(
+        { error: `Failed to parse FormData: ${parseError instanceof Error ? parseError.message : "Unknown error"}` },
+        { status: 400 },
+      );
+    }
     const file = formData.get("file") as File;
     let folder = formData.get("folder") as string;
 
