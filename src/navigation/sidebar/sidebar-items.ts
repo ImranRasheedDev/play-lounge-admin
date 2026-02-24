@@ -5,6 +5,7 @@ import {
   MessageSquareText,
   Star,
   Tag,
+  UserCheck,
   UtensilsCrossed,
   Users,
   type LucideIcon,
@@ -158,6 +159,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Host Event Requests",
         url: "/dashboard/host-event-requests",
         icon: MessageSquareText,
+      },
+      {
+        title: "RSVPs",
+        url: "/dashboard/rsvps",
+        icon: UserCheck,
+        roles: ["SUPER_ADMIN"],
       },
       // {
       //   title: "Authentication",

@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { MoreHorizontal, UserCheck, UserX } from "lucide-react";
+import { Eye, MoreHorizontal, UserCheck, UserX } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User } from "@/types/user";
@@ -52,18 +55,6 @@ export const createColumns = ({ onToggleStatus }: ColumnsProps): ColumnDef<User>
     cell: ({ row }) => <span className="text-muted-foreground">{row.original.email}</span>,
   },
   {
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      const role = row.original.role;
-      return (
-        <Badge variant={role === "SUPER_ADMIN" ? "default" : "secondary"}>
-          {role === "SUPER_ADMIN" ? "Super Admin" : "User"}
-        </Badge>
-      );
-    },
-  },
-  {
     accessorKey: "isActive",
     header: "Status",
     cell: ({ row }) => {
@@ -102,6 +93,13 @@ export const createColumns = ({ onToggleStatus }: ColumnsProps): ColumnDef<User>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <Link href={`/dashboard/users/${user.id}`}>
+                <Eye className="mr-2 size-4" />
+                View Details
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onToggleStatus(user)} className="cursor-pointer">
               {user.isActive ? (
                 <>
