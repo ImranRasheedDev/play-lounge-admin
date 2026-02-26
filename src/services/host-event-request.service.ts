@@ -33,6 +33,7 @@ export interface HostEventRequestUpdateInput {
   endTime?: string;
   guestArrivalTime?: string;
   eventDescription?: string;
+  eventInstructions?: string;
   eventType?: string;
   eventStyle?: string;
   maxBudget?: string;
