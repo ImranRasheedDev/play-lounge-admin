@@ -95,6 +95,12 @@ export interface ContactPageContent {
   sectionImage: string;
 }
 
+export interface PartnerWithUsPageContent {
+  hero: PageHero;
+  title: string;
+  description: string;
+}
+
 export interface LegalSection {
   title: string;
   content: string;
@@ -141,8 +147,10 @@ export interface SiteSettings {
   forCorporates: MarketingPageContent;
   forIndividuals: MarketingPageContent;
   contactUs: ContactPageContent;
+  partnerWithUs: PartnerWithUsPageContent;
   privacyPolicy: LegalPageContent;
   termsConditions: LegalPageContent;
+  cookiePolicy: LegalPageContent;
   discover: DiscoverPageContent;
   eventConcierge: EventConciergeContent;
   createdAt: string;
