@@ -71,6 +71,15 @@ interface ContactPageForm {
   sectionImage: File | string;
 }
 
+interface PartnerWithUsPageForm {
+  hero: {
+    title: string;
+    backgroundImage: File | string;
+  };
+  title: string;
+  description: string;
+}
+
 interface LegalSectionForm {
   title: string;
   content: string;
@@ -150,8 +159,10 @@ interface FormValues {
   forCorporates: MarketingPageForm;
   forIndividuals: MarketingPageForm;
   contactUs: ContactPageForm;
+  partnerWithUs: PartnerWithUsPageForm;
   privacyPolicy: LegalPageForm;
   termsConditions: LegalPageForm;
+  cookiePolicy: LegalPageForm;
   discover: {
     hero: {
       title: string;
@@ -220,8 +231,10 @@ type TabValue =
   | "forCorporates"
   | "forIndividuals"
   | "contactUs"
+  | "partnerWithUs"
   | "privacyPolicy"
   | "termsConditions"
+  | "cookiePolicy"
   | "discover"
   | "eventConcierge";
 
@@ -232,8 +245,10 @@ const tabConfig: { value: TabValue; label: string; icon: React.ElementType; desc
   { value: "forCorporates", label: "For Corporates", icon: Building2, description: "B2B content" },
   { value: "forIndividuals", label: "For Individuals", icon: Users, description: "B2C content" },
   { value: "contactUs", label: "Contact Us", icon: Mail, description: "Contact information" },
+  { value: "partnerWithUs", label: "Partner With Us", icon: Building2, description: "Partnership page" },
   { value: "privacyPolicy", label: "Privacy Policy", icon: Shield, description: "Privacy terms" },
   { value: "termsConditions", label: "Terms", icon: FileText, description: "Legal terms" },
+  { value: "cookiePolicy", label: "Cookie Policy", icon: Shield, description: "Cookie terms" },
   { value: "discover", label: "Discover", icon: MapPin, description: "Discovery page" },
   { value: "eventConcierge", label: "Shared Slider", icon: Globe, description: "Auth + concierge pages slider" },
 ];
@@ -297,11 +312,20 @@ export function SiteSettingsForm() {
         sectionTitle: "",
         sectionImage: "",
       },
+      partnerWithUs: {
+        hero: { title: "", backgroundImage: "" },
+        title: "",
+        description: "",
+      },
       privacyPolicy: {
         hero: { title: "", backgroundImage: "" },
         sections: [emptyLegalSection()],
       },
       termsConditions: {
+        hero: { title: "", backgroundImage: "" },
+        sections: [emptyLegalSection()],
+      },
+      cookiePolicy: {
         hero: { title: "", backgroundImage: "" },
         sections: [emptyLegalSection()],
       },
@@ -328,6 +352,7 @@ export function SiteSettingsForm() {
   const individualSections = useFieldArray({ control: form.control, name: "forIndividuals.sections" });
   const privacySections = useFieldArray({ control: form.control, name: "privacyPolicy.sections" });
   const termsSections = useFieldArray({ control: form.control, name: "termsConditions.sections" });
+  const cookieSections = useFieldArray({ control: form.control, name: "cookiePolicy.sections" });
   const eventSlides = useFieldArray({ control: form.control, name: "eventConcierge.slides" });
 
   useEffect(() => {
@@ -427,8 +452,17 @@ export function SiteSettingsForm() {
         sectionTitle: data.contactUs?.sectionTitle ?? "",
         sectionImage: data.contactUs?.sectionImage ?? "",
       },
+      partnerWithUs: {
+        hero: {
+          title: data.partnerWithUs?.hero?.title ?? "",
+          backgroundImage: data.partnerWithUs?.hero?.backgroundImage ?? "",
+        },
+        title: data.partnerWithUs?.title ?? "",
+        description: data.partnerWithUs?.description ?? "",
+      },
       privacyPolicy: mapLegal(data.privacyPolicy),
       termsConditions: mapLegal(data.termsConditions),
+      cookiePolicy: mapLegal(data.cookiePolicy),
       discover: {
         hero: {
           title: data.discover?.hero?.title ?? "",
@@ -520,6 +554,7 @@ export function SiteSettingsForm() {
       forCorporates: mapMarketing(values.forCorporates, false),
       forIndividuals: mapMarketing(values.forIndividuals, true),
       contactUs: values.contactUs,
+      partnerWithUs: values.partnerWithUs,
       privacyPolicy: {
         hero: values.privacyPolicy.hero,
         sections: values.privacyPolicy.sections.map((section) => ({
@@ -530,6 +565,13 @@ export function SiteSettingsForm() {
       termsConditions: {
         hero: values.termsConditions.hero,
         sections: values.termsConditions.sections.map((section) => ({
+          title: section.title,
+          content: section.content,
+        })),
+      },
+      cookiePolicy: {
+        hero: values.cookiePolicy.hero,
+        sections: values.cookiePolicy.sections.map((section) => ({
           title: section.title,
           content: section.content,
         })),
@@ -793,7 +835,7 @@ export function SiteSettingsForm() {
 
   const renderLegalPage = (
     title: string,
-    path: "privacyPolicy" | "termsConditions",
+    path: "privacyPolicy" | "termsConditions" | "cookiePolicy",
     sections: ReturnType<typeof useFieldArray<FormValues, `${typeof path}.sections`>>,
   ) => (
     <div className="space-y-6">
@@ -887,7 +929,7 @@ export function SiteSettingsForm() {
         {/* Navigation Tabs */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 md:grid-cols-5 lg:grid-cols-10">
+            <TabsList className="grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0 md:grid-cols-6 lg:grid-cols-12">
               {tabConfig.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -1253,6 +1295,56 @@ export function SiteSettingsForm() {
           </Card>
         </TabsContent>
 
+        {/* Partner With Us */}
+        <TabsContent value="partnerWithUs" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Partner With Us Page
+              </CardTitle>
+              <CardDescription>Configure the partnership page hero and intro content</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Separator />
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Hero Section</h4>
+                <div className="space-y-2">
+                  <Label>Hero Title</Label>
+                  <Input {...form.register("partnerWithUs.hero.title")} placeholder="Hero title..." />
+                </div>
+                {renderImageInput(
+                  "Hero Background Image",
+                  "partnerWithUs.hero.backgroundImage",
+                  form.watch("partnerWithUs.hero.backgroundImage"),
+                )}
+              </div>
+              <Separator />
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Intro Content</h4>
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input {...form.register("partnerWithUs.title")} placeholder="Section title..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Controller
+                    control={form.control}
+                    name="partnerWithUs.description"
+                    render={({ field }) => (
+                      <RichTextEditor
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Write page description..."
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Legal Pages */}
         <TabsContent value="privacyPolicy">
           {renderLegalPage("Privacy Policy", "privacyPolicy", privacySections)}
@@ -1260,6 +1352,10 @@ export function SiteSettingsForm() {
 
         <TabsContent value="termsConditions">
           {renderLegalPage("Terms & Conditions", "termsConditions", termsSections)}
+        </TabsContent>
+
+        <TabsContent value="cookiePolicy">
+          {renderLegalPage("Cookie Policy", "cookiePolicy", cookieSections)}
         </TabsContent>
 
         {/* Discover Page */}
