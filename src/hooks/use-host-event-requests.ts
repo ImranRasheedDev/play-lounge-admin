@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import {
   deleteHostEventRequest,
+  getHostEventRequest,
   getHostEventRequests,
   updateHostEventRequest,
   type HostEventRequestUpdateInput,
@@ -20,6 +21,17 @@ export const useHostEventRequests = (params: PaginationParams) => {
     refetchOnWindowFocus: false,
     staleTime: 0,
     placeholderData: keepPreviousData,
+  });
+};
+
+// Hook to fetch a single host event request by ID
+export const useHostEventRequest = (id?: string) => {
+  return useQuery({
+    queryKey: [...HOST_EVENT_REQUESTS_KEY, id],
+    queryFn: () => getHostEventRequest(id as string),
+    enabled: Boolean(id),
+    refetchOnWindowFocus: false,
+    staleTime: 0,
   });
 };
 
