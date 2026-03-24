@@ -21,6 +21,41 @@ export interface HostEventRequestSingleResponse {
 }
 
 export interface HostEventRequestUpdateInput {
+  // Contact Details
+  name?: string;
+  email?: string;
+  phone?: string;
+  // Event Details
+  eventName?: string;
+  numberOfGuests?: number;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  guestArrivalTime?: string;
+  eventDescription?: string;
+  eventType?: string;
+  eventStyle?: string;
+  maxBudget?: string;
+  message?: string;
+  banner?: string;
+  // Flags
+  flexibleDates?: boolean;
+  isDraft?: boolean;
+  // Venue
+  venueId?: string;
+  // Attachments (Step 3)
+  foodMenuUrls?: string[];
+  drinkMenuUrls?: string[];
+  additionalDocumentUrls?: string[];
+  // RSVP Settings (Step 4)
+  submissionDeadlineDate?: string;
+  submissionDeadlineTime?: string;
+  automatedReminders?: boolean;
+  reminder48Hours?: boolean;
+  reminder5Days?: boolean;
+  reminder12to24Hours?: boolean;
+  send48HoursBeforeEvent?: boolean;
+  // Admin fields
   status?: HostEventRequestStatus;
   adminNotes?: string;
   documents?: EventRequestDocument[];

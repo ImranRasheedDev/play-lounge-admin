@@ -2,18 +2,36 @@
 
 import * as React from "react";
 
+import { PaginationState } from "@tanstack/react-table";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDataTableInstance } from "@/hooks/use-data-table-instance";
-import { useUsers, useToggleUserStatus } from "@/hooks/use-users";
+import { useToggleUserStatus, useUsers } from "@/hooks/use-users";
 import { User } from "@/types/user";
 
 import { createColumns } from "./columns";
 
 export function UserTable() {
-  const { data: users = [], isLoading, dataUpdatedAt } = useUsers();
+  // Pagination state for server-side pagination
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  const {
+    data: usersData,
+    isLoading,
+    dataUpdatedAt,
+  } = useUsers({
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
+  });
+  const users = usersData?.data ?? [];
+  const pageCount = usersData?.meta?.totalPages ?? 0;
+
   const toggleStatusMutation = useToggleUserStatus();
 
   const handleToggleStatus = React.useCallback(
@@ -35,6 +53,10 @@ export function UserTable() {
     data: users,
     columns,
     getRowId: (row) => row.id,
+    manualPagination: true,
+    pageCount,
+    pagination,
+    onPaginationChange: setPagination,
   });
 
   return (

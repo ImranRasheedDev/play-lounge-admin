@@ -52,6 +52,22 @@ export interface HostEventRequest {
   agreeOffers: boolean;
   adminNotes?: string;
   documents?: EventRequestDocument[];
+  // Current step in event creation process (1-5)
+  currentStep?: number;
+  // Attachments (Step 3)
+  foodMenuUrls?: string[];
+  drinkMenuUrls?: string[];
+  additionalDocumentUrls?: string[];
+  // RSVP Settings (Step 4)
+  submissionDeadlineDate?: string;
+  submissionDeadlineTime?: string;
+  automatedReminders?: boolean;
+  reminder48Hours?: boolean;
+  reminder5Days?: boolean;
+  reminder12to24Hours?: boolean;
+  send48HoursBeforeEvent?: boolean;
+  // Guests (references to RSVPs)
+  guests?: string[];
   createdAt: string;
   updatedAt: string;
 }
