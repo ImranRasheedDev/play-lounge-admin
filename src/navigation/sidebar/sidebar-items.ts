@@ -184,8 +184,8 @@ export const sidebarItems: NavGroup[] = [
     label: "Website Settings",
     items: [
       {
-        title: "Homepage Settings",
-        url: "/dashboard/homepage-settings",
+        title: "Site Settings",
+        url: "/dashboard/site-settings",
         icon: Home,
       },
       {
